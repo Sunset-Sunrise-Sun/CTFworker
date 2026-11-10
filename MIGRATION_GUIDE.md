@@ -1,33 +1,35 @@
 # P0 Source Migration Guide
 
-The documentation baseline is on branch `docs/project-baseline`. The accepted P0 source snapshot is supplied separately in the migration bundle; it has not yet been committed to this GitHub repository.
+The product/governance baseline is on branch docs/project-baseline (Draft PR #1). The accepted P0 source code must be imported from the **original source archive**, not the later convenience bundle.
 
-## Source provenance
+## Exact source artifact
 
-- P0-REVIEW-FIX-02 source SHA: `a4d0762e1b5b7673a09ab5a2ac99656bc743925d`
-- Historical reported tests: 532 passed, 7 skipped; 26 new regressions passed; demo 58/58; Ruff passed.
-- Re-run tests after import. Historical numbers are not fresh target-repository results.
+- Archive: ctfworker_p0_a4d0762_source.zip
+- ZIP comment/source label: a4d0762e1b5b7673a09ab5a2ac99656bc743925d
+- SHA-256: ef523c473ad1c047687191e10e93e7deed40db809e1670813b67a7d8f8b7c05f
+- 110 files; 1,916,345 uncompressed bytes
+- The archive contains no .git metadata; its comment is a provenance label, not a Git ancestry proof.
 
-## Safe import procedure
+Do not use CTFworker-P0-REVIEW-FIX-02-migration-bundle.zip as the exact source: that convenience bundle replaced root README.md and docs/ARCHITECTURE.md with new governance versions and added files.
 
-1. Clone the target repository.
-2. Fetch and branch from `origin/docs/project-baseline`.
-3. Extract the migration bundle to a temporary directory.
-4. Copy the bundle contents to the repository root, preserving `.git`.
-5. Review all changed/staged paths. Exclude challenge data, Flags, tokens, raw logs, local paths and environment dumps.
-6. Run `python scripts/solver_demo.py`, backend tests and Ruff; record actual output and skips.
-7. Commit on the feature branch. Do not merge before independent review.
+## Protected target files
 
-```powershell
-git clone https://github.com/Sunset-Sunrise-Sun/CTFworker.git
-cd CTFworker
-git fetch origin docs/project-baseline
-git switch -c migration/p0-review-fix-02 origin/docs/project-baseline
-# Extract the migration bundle elsewhere, then copy its contents here.
-git status --short
-git diff --stat
-python scripts/solver_demo.py
-python -m pytest -q
-```
+Do not overwrite the target branch's README.md, MIGRATION_GUIDE.md, docs/PRODUCT_BLUEPRINT.md, docs/PRODUCT_CHARTER.md, docs/ARCHITECTURE.md, docs/ROADMAP.md, docs/STATUS.md, docs/AGENT_WORKFLOW.md, docs/DECISIONS.md, docs/SECURITY.md or docs/MIGRATION_AUDIT_20261110.md.
 
-No live ACP, live provider, real challenge or target network test is implied by the P0 baseline.
+Rename the original source files:
+- source README.md -> target README-P0-ORIGINAL.md
+- source docs/ARCHITECTURE.md -> target docs/reference/WORKBENCH_ARCHITECTURE.md
+
+Redact local absolute paths in docs/a00/REGRESSION.md and docs/MVP_WRITEUP_ACCEPTANCE.md before public commit. Preserve synthetic Flag fixtures in tests.
+
+## Execution task
+
+Follow docs/tasks/A0-2_P0_SOURCE_IMPORT.md exactly. It defines import mapping, non-goals, test commands, CI portability caveat, stop conditions and required report.
+
+## Acceptance
+
+- Preserve P0 source behavior and frozen interfaces.
+- Run pinned Windows backend/Ruff/frontend checks and offline demo.
+- Report actual outputs and skips; do not claim unrun checks.
+- Keep migration PR draft/open/unmerged for independent review.
+- Do not start real ACP integration or toolchain installation in this task.
