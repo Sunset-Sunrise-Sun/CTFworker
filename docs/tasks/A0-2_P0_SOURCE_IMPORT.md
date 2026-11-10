@@ -62,11 +62,13 @@ Add root P0_SOURCE_PROVENANCE.md recording source archive name/hash, ZIP comment
 
 ## Required public-repository redaction
 
-The original source contains local absolute Windows paths in:
-- docs/a00/REGRESSION.md
-- docs/MVP_WRITEUP_ACCEPTANCE.md
+The original source contains user-specific local absolute Windows paths in:
+- `docs/a00/REGRESSION.md`
+- `docs/MVP_WRITEUP_ACCEPTANCE.md`
 
-Replace only the local path strings with neutral placeholders such as `<LOCAL_WORKSPACE_PATH>` and `<TEMP_WORKSPACE_PATH>`. Preserve command structure, test results and surrounding evidence. Do not publish local usernames, machine paths, environment dumps, challenge data, real Flags, credentials or tokens.
+Replace only the local path strings in these two files with neutral placeholders such as `<LOCAL_WORKSPACE_PATH>` and `<TEMP_WORKSPACE_PATH>`. Preserve command structure, test results and surrounding evidence. Do not publish local usernames, machine paths, environment dumps, challenge data, real Flags, credentials or tokens.
+
+A read-only scan also found generic historical `D:\\CTF` / `D:\\CTF-worktrees` references in several other engineering docs, plus deliberate Windows path attack fixtures in tests. Preserve these during A0-2 to avoid silently expanding scope; list the generic documentation references as a separate public-hygiene follow-up. Never alter the path-security test fixtures.
 
 Synthetic Flag strings in tests and solver_demo.py are deliberate synthetic fixtures for the redaction tests. Keep them unchanged.
 
@@ -105,7 +107,7 @@ Also verify:
 - Worker stop confirmation precedes session close and slot release;
 - CAS/event links and no plaintext Flag/agent payload in SQLite;
 - restart recovery and no second JSONL authority;
-- no local paths/secrets/real challenge artifacts in git diff;
+- no user-specific local paths remain in the two redacted docs; list remaining generic historical path references and intentional test fixtures separately; no secrets or real challenge artifacts in git diff;
 - no __pycache__, .pytest_cache, .ruff_cache, node_modules, dist, sqlite/db, .env or generated challenge data staged.
 
 ## Known environment-specific test/CI issue

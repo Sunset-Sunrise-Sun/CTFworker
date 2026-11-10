@@ -47,11 +47,13 @@ docs/MVP_BACKEND_SHA256SUMS is an earlier baseline manifest, not the P0-REVIEW-F
 
 ## 4. Public-repository hygiene findings
 
-Two historical evidence documents contain local Windows workspace paths:
-- docs/a00/REGRESSION.md
-- docs/MVP_WRITEUP_ACCEPTANCE.md
+Two historical evidence documents contain user-specific local Windows workspace paths:
+- `docs/a00/REGRESSION.md`
+- `docs/MVP_WRITEUP_ACCEPTANCE.md`
 
-Before public import, replace only the absolute local path strings with neutral placeholders such as `<LOCAL_WORKSPACE_PATH>` and `<TEMP_WORKSPACE_PATH>`. Preserve commands, test results and surrounding evidence. Do not publish local usernames, machine paths, environment dumps, challenge data, real Flags, credentials or tokens.
+Replace only the local path strings in these two files with neutral placeholders such as `<LOCAL_WORKSPACE_PATH>` and `<TEMP_WORKSPACE_PATH>`. Preserve command structure, test results and surrounding evidence. Do not publish local usernames, machine paths, environment dumps, challenge data, real Flags, credentials or tokens.
+
+A read-only scan also found generic historical `D:\\CTF` / `D:\\CTF-worktrees` references in `docs/P0_SOLVER_INTERFACES.md`, `docs/P1_ARTIFACT_STORAGE.md`, `docs/P0_SOLVER_TEST_REPORT.md`, `docs/P0_FIX_SPEC.md`, `docs/P0_SOLVER_MANAGER.md`, `docs/P0_FIX_REPORT.md` and `docs/P0_FIX2_SPEC.md`. Several test files contain deliberate Windows absolute-path attack fixtures (for example `C:\\Windows\\evil.bin`). These differ from the user-specific `C:\\Users\\...` paths above. To keep A0-2 a source-preserving migration, do not silently broaden its redaction scope or alter security-test fixtures; list the generic historical documentation paths as a separate public-hygiene follow-up for reviewer disposition.
 
 Synthetic Flag strings in unit tests and solver_demo.py are deliberate fixtures and are labelled synthetic; they are not real challenge data. Keep them unchanged because they test the Flag-redaction contract.
 
