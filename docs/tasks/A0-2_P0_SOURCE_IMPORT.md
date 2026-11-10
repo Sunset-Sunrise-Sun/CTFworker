@@ -66,7 +66,7 @@ The original source contains local absolute Windows paths in:
 - docs/a00/REGRESSION.md
 - docs/MVP_WRITEUP_ACCEPTANCE.md
 
-Replace only the local path strings with neutral placeholders such as <LOCAL_WORKSPACE_PATH> and <TEMP_WORKSPACE_PATH>. Preserve command structure, test results and surrounding evidence. Do not publish local usernames, machine paths, environment dumps, challenge data, real Flags, credentials or tokens.
+Replace only the local path strings with neutral placeholders such as `<LOCAL_WORKSPACE_PATH>` and `<TEMP_WORKSPACE_PATH>`. Preserve command structure, test results and surrounding evidence. Do not publish local usernames, machine paths, environment dumps, challenge data, real Flags, credentials or tokens.
 
 Synthetic Flag strings in tests and solver_demo.py are deliberate synthetic fixtures for the redaction tests. Keep them unchanged.
 
