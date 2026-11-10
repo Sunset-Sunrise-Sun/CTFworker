@@ -49,7 +49,7 @@ Two historical evidence documents contain local Windows workspace paths:
 - docs/a00/REGRESSION.md
 - docs/MVP_WRITEUP_ACCEPTANCE.md
 
-Before public import, replace only the absolute local path strings with neutral placeholders such as <LOCAL_WORKSPACE_PATH> and <TEMP_WORKSPACE_PATH>. Preserve commands, test results and surrounding evidence. Do not publish local usernames, machine paths, environment dumps, challenge data, real Flags, credentials or tokens.
+Before public import, replace only the absolute local path strings with neutral placeholders such as `<LOCAL_WORKSPACE_PATH>` and `<TEMP_WORKSPACE_PATH>`. Preserve commands, test results and surrounding evidence. Do not publish local usernames, machine paths, environment dumps, challenge data, real Flags, credentials or tokens.
 
 Synthetic Flag strings in unit tests and solver_demo.py are deliberate fixtures and are labelled synthetic; they are not real challenge data. Keep them unchanged because they test the Flag-redaction contract.
 
