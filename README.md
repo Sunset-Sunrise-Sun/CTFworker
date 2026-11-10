@@ -6,13 +6,14 @@ CTFworker is the engineering home for a local-first, evidence-first CTF solving 
 
 ## Start here (mandatory reading order)
 
-1. [Product charter](docs/PRODUCT_CHARTER.md) — product goal, users, scope and non-negotiable rules.
-2. [Architecture](docs/ARCHITECTURE.md) — components, ownership boundaries, data flow and security model.
-3. [Roadmap](docs/ROADMAP.md) — phase gates, dependencies and acceptance criteria.
-4. [Current status](docs/STATUS.md) — what is done, blocked, and the one next task.
-5. [Agent workflow](docs/AGENT_WORKFLOW.md) — required instructions for DeepSeek, Codex and reviewers.
-6. [Decision log](docs/DECISIONS.md) — durable decisions; do not silently reverse them.
-7. [Security and data policy](docs/SECURITY.md) — authorized scope, isolation, secrets and evidence rules.
+1. [Product blueprint](docs/PRODUCT_BLUEPRINT.md) — the agreed target architecture, end-to-end workflow and product P0–P3 gates. This is the anti-drift north star.
+2. [Product charter](docs/PRODUCT_CHARTER.md) — product goal, users, scope and non-negotiable rules.
+3. [Architecture](docs/ARCHITECTURE.md) — current P0 code, target Harness integration and component ownership.
+4. [Roadmap](docs/ROADMAP.md) — product phases, engineering milestones and environment dependencies.
+5. [Current status](docs/STATUS.md) — what is done, blocked, and the one next task.
+6. [Agent workflow](docs/AGENT_WORKFLOW.md) — required instructions for DeepSeek, Codex and reviewers.
+7. [Decision log](docs/DECISIONS.md) — durable decisions; do not silently reverse them.
+8. [Security and data policy](docs/SECURITY.md) — authorized scope, isolation, secrets and evidence rules.
 
 ## Current implementation baseline
 
@@ -31,7 +32,7 @@ CTFworker is the engineering home for a local-first, evidence-first CTF solving 
 
 ## Development rules
 
-- Read the seven documents above before planning or editing code.
+- Read the eight documents above before planning or editing code.
 - Work on one numbered task at a time; do not expand scope without approval.
 - Default concurrency is **two active challenge Workers**; excess tasks wait FIFO.
 - Never execute an untrusted attachment or contact a target during mock-only acceptance.
