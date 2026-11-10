@@ -28,7 +28,7 @@ CTFworker is the engineering home for a local-first, evidence-first CTF solving 
 
 ## Current engineering baseline
 
-P0-REVIEW-FIX-02 is the accepted Manager Core source candidate, labelled `a4d0762e1b5b7673a09ab5a2ac99656bc743925d`. Its original 110-file source archive is being migrated into this repository on the draft baseline PR. The import is not accepted until target-repository validation and independent review complete.
+P0-REVIEW-FIX-02 is the accepted Manager Core source candidate, labelled `a4d0762e1b5b7673a09ab5a2ac99656bc743925d`. The exact 110-file source ZIP has been recovered from `CTF-P0-review-fix-02-package.zip` and its SHA-256 verified. The import is tracked by [Issue #2](https://github.com/Sunset-Sunrise-Sun/CTFworker/issues/2) on the draft baseline PR. It is not accepted until target-repository validation and independent review complete.
 
 P0 Manager Core uses a deterministic Mock Runner for its current acceptance surface. It does not prove a real ACP process, live model provider, real binary execution, target connectivity, Docker isolation or platform Flag verification.
 

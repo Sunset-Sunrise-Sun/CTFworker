@@ -33,12 +33,12 @@ PRODUCT_BLUEPRINT.md is authoritative. A phase is complete only when its exit ga
 
 ## 3. Environment workstream B
 
-| Phase | Scope | Last known state |
+| Phase | Scope | Latest verified/reported state |
 |---|---|---|
 | B0 | Windows baseline audit | Reported complete |
-| B1 | WSL2 networking foundation | Reported PASS |
-| B2 | Docker daemon proxy inheritance | Outstanding in last handoff; verify before action |
-| B3 | Docker Engine install/start/hello-world | Not confirmed complete |
+| B1 | Ubuntu 24.04.5 WSL2 + networking | Reported complete; distro at `D:\\WSL\\Ubuntu-24.04`, user `ctfuser` |
+| B2 | Docker Engine + daemon proxy inheritance | Docker Engine 29.9.3 running; Phase 2B-1G PASS, first `hello-world` pull/run succeeded; socket restricted to `root:docker`, no 2375/2376 listener |
+| B3 | Docker Broker / gVisor isolation design and implementation | Phase 2B-2A read-only audit + 2B-2B-R1 design complete; independent review pending; 2B-2C implementation not authorized |
 | B4 | Version-pinned CTF toolchain image | Not started |
 | B5 | Per-task isolation acceptance | Not started |
 

@@ -4,10 +4,13 @@ The product/governance baseline is on branch docs/project-baseline (Draft PR #1)
 
 ## Exact source artifact
 
-- Archive: ctfworker_p0_a4d0762_source.zip
+- Outer package: `CTF-P0-review-fix-02-package.zip`
+- Exact nested archive: `CTF-P0-review-fix-02-package/04-source-snapshot/ctf-manager-p0-fix-02-a4d0762-source.zip`
+- The earlier shorthand filename `ctfworker_p0_a4d0762_source.zip` was inaccurate; do not search for that basename.
 - ZIP comment/source label: a4d0762e1b5b7673a09ab5a2ac99656bc743925d
 - SHA-256: ef523c473ad1c047687191e10e93e7deed40db809e1670813b67a7d8f8b7c05f
 - 110 files; 1,916,345 uncompressed bytes
+- The inner ZIP has been extracted from the outer review package and independently verified against the SHA-256 above.
 - The archive contains no .git metadata; its comment is a provenance label, not a Git ancestry proof.
 
 Do not use CTFworker-P0-REVIEW-FIX-02-migration-bundle.zip as the exact source: that convenience bundle replaced root README.md and docs/ARCHITECTURE.md with new governance versions and added files.

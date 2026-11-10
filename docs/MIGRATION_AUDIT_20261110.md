@@ -7,8 +7,10 @@ The source-of-truth input for migration is the original source archive, not the 
 | Item | Verified value |
 |---|---|
 | Source snapshot label in ZIP comment | a4d0762e1b5b7673a09ab5a2ac99656bc743925d |
-| Source archive | ctfworker_p0_a4d0762_source.zip |
-| Archive SHA-256 | ef523c473ad1c047687191e10e93e7deed40db809e1670813b67a7d8f8b7c05f |
+| Outer package | `CTF-P0-review-fix-02-package.zip` (682,868 bytes; SHA-256 `53913ddb165a321284bb29bd84d2ea57dd30618889cf41e3d974b145274a403e`) |
+| Exact nested source ZIP | `CTF-P0-review-fix-02-package/04-source-snapshot/ctf-manager-p0-fix-02-a4d0762-source.zip` |
+| Inner archive SHA-256 | `ef523c473ad1c047687191e10e93e7deed40db809e1670813b67a7d8f8b7c05f` |
+| ZIP comment/source label | `a4d0762e1b5b7673a09ab5a2ac99656bc743925d` |
 | Files in original archive | 110 |
 | Uncompressed bytes | 1,916,345 |
 | Git metadata | Not included; archive comment and checksum manifests are provenance evidence, not a .git ancestry proof |
@@ -17,7 +19,7 @@ The source archive is the accepted P0-REVIEW-FIX-02 code snapshot. Do not substi
 
 ## 2. Important correction about the convenience migration bundle
 
-The previously generated convenience bundle CTFworker-P0-REVIEW-FIX-02-migration-bundle.zip contains 119 files, but it is **not byte-for-byte the original source snapshot**:
+The previously generated convenience bundle `CTFworker-P0-REVIEW-FIX-02-migration-bundle.zip` contains 119 file members (137 ZIP entries including directories), but it is **not byte-for-byte the original source snapshot**:
 - root README.md was replaced with the new repository navigation README;
 - docs/ARCHITECTURE.md was replaced with the new target architecture document;
 - the new governance documents were added.
@@ -79,7 +81,7 @@ Do not silently modify the P0 source during the import commit. Record this as a 
 
 ## 7. Migration disposition
 
-**Source identity: PASS WITH NOTES.** The original archive is correctly labelled and the P0 code/test manifest entries match; the archive does not carry Git metadata and two documentation manifest entries differ.
+**Source identity: PASS WITH NOTES.** The nested original archive has been recovered from the outer review package and independently verified against the expected SHA-256, 110-file count, 1,916,345 uncompressed bytes and ZIP comment. It does not carry Git metadata; two documentation manifest entries differ.
 
 **Public hygiene: ACTION REQUIRED.** Redact the two local-path-bearing docs before commit.
 
@@ -87,7 +89,7 @@ Do not silently modify the P0 source during the import commit. Record this as a 
 
 ## 8. Next task
 
-Execute A0-2 using the original source archive:
+Execute A0-2 using the exact nested source archive recorded in §1 (tracked by [Issue #2](https://github.com/Sunset-Sunrise-Sun/CTFworker/issues/2)):
 1. import exact source files while preserving the new product north-star docs;
 2. rename the original README and legacy Workbench architecture doc rather than overwriting the new repository docs;
 3. redact local workspace paths in the two historical evidence docs;

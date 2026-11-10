@@ -3,7 +3,7 @@
 **Task ID:** A0-2  
 **Phase:** Engineering A0 / P0 source migration  
 **Target branch:** docs/project-baseline (the head branch of Draft PR #1)  
-**Source archive:** original ctfworker_p0_a4d0762_source.zip  
+**Source archive:** nested `ctf-manager-p0-fix-02-a4d0762-source.zip` inside `CTF-P0-review-fix-02-package.zip`  
 **Expected archive SHA-256:** ef523c473ad1c047687191e10e93e7deed40db809e1670813b67a7d8f8b7c05f  
 **Source label in ZIP comment:** a4d0762e1b5b7673a09ab5a2ac99656bc743925d
 
@@ -29,8 +29,8 @@ The product blueprint is authoritative. Do not alter its product scope, Scheme A
 
 ## Source selection and integrity
 
-1. Use the original 110-file source archive with the expected SHA-256 above. Verify it before extraction.
-2. Do not use the later 119-file convenience migration bundle as the source snapshot; it contains a replaced README and replaced docs/ARCHITECTURE.md.
+1. Extract the exact nested member `CTF-P0-review-fix-02-package/04-source-snapshot/ctf-manager-p0-fix-02-a4d0762-source.zip` from `CTF-P0-review-fix-02-package.zip`. Verify the inner ZIP SHA-256 (`ef523c473ad1c047687191e10e93e7deed40db809e1670813b67a7d8f8b7c05f`) before extracting it.
+2. Do not use the outer review package itself as the source tree, and do not use the later 119-file convenience migration bundle; the latter contains a replaced README and replaced docs/ARCHITECTURE.md.
 3. The source archive has no .git directory. Its ZIP comment labels the source SHA; do not claim that archive metadata alone proves Git ancestry.
 4. Do not substitute dd299d9 or an earlier review package.
 5. Do not rewrite historical SHA manifests to make mismatches disappear. Record the known manifest status in docs/MIGRATION_AUDIT_20261110.md.
