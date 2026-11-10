@@ -1,5 +1,48 @@
-# CTFworker
+# CTFworker — Local-first CTF Solver
 
-CTF Solver project repository. The product charter, architecture, roadmap, decision log, and agent workflow are being established in the initial project-baseline change.
+CTFworker is the engineering home for a local-first, evidence-first CTF solving workbench. It coordinates challenge intake, per-challenge workspaces, bounded Worker execution, human authorization, immutable evidence, and Writeup/export.
 
-The repository is currently being initialized from the accepted P0 Manager Core baseline. See the pending project-baseline change before starting implementation work.
+> **Core product promise:** a Writeup is a traceable rendering of recorded actions and evidence—not a story reconstructed from a final Flag or an agent's recollection.
+
+## Start here (mandatory reading order)
+
+1. [Product charter](docs/PRODUCT_CHARTER.md) — product goal, users, scope and non-negotiable rules.
+2. [Architecture](docs/ARCHITECTURE.md) — components, ownership boundaries, data flow and security model.
+3. [Roadmap](docs/ROADMAP.md) — phase gates, dependencies and acceptance criteria.
+4. [Current status](docs/STATUS.md) — what is done, blocked, and the one next task.
+5. [Agent workflow](docs/AGENT_WORKFLOW.md) — required instructions for DeepSeek, Codex and reviewers.
+6. [Decision log](docs/DECISIONS.md) — durable decisions; do not silently reverse them.
+7. [Security and data policy](docs/SECURITY.md) — authorized scope, isolation, secrets and evidence rules.
+
+## Current implementation baseline
+
+- **P0 Manager Core baseline:** source snapshot a4d0762e1b5b7673a09ab5a2ac99656bc743925d (P0-REVIEW-FIX-02).
+- P0 provides challenge intake, per-task workspace, a two-slot FIFO scheduler, persisted task/Worker state, ACP v1 adapter contracts with a deterministic Mock Runner, SQLite event persistence, CAS artifact storage, and incremental Writeup generation.
+- P0 does **not** prove a real ACP process, live model provider, real challenge execution, target connectivity, or competition-platform Flag verification.
+- P0 was accepted with follow-up notes. See [status](docs/STATUS.md).
+
+## Repository layout
+
+- backend/app/solver/: Manager, scheduler, Runner/ACP contracts, intake, workspace, store and Writeup.
+- backend/app/: existing Workbench integration and persistence primitives.
+- frontend/: existing Workbench UI; no separate full-stack product is planned.
+- docs/: product, architecture, roadmap, status, decisions, security and acceptance records.
+- scripts/, tests/: reproducible checks and synthetic fixtures.
+
+## Development rules
+
+- Read the seven documents above before planning or editing code.
+- Work on one numbered task at a time; do not expand scope without approval.
+- Default concurrency is **two active challenge Workers**; excess tasks wait FIFO.
+- Never execute an untrusted attachment or contact a target during mock-only acceptance.
+- Keep real challenge data, Flags, tokens, raw logs, target URLs/IPs and generated Writeups out of this public repository.
+- No push, PR merge, release, environment mutation or live-model run without explicit authorization.
+- A green test suite is evidence for the tested scope only; it is not proof of production readiness.
+
+## Offline demo
+
+```powershell
+python scripts/solver_demo.py
+```
+
+This demo is synthetic and uses the Mock Runner. It does not launch a real agent, execute challenge binaries, or access a target.
