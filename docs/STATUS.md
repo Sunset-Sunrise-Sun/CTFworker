@@ -7,7 +7,7 @@ Last reconciled: 2026-11-10 (Asia/Shanghai).
 - Repository: Sunset-Sunrise-Sun/CTFworker.
 - Default branch: main.
 - Product/governance branch: docs/project-baseline.
-- Current branch HEAD: `15e652c90d11640e91156f021d4eaa86d1be1609` (product/architecture decision alignment commit).
+- Product/architecture decision alignment commit: `15e652c90d11640e91156f021d4eaa86d1be1609`.
 - Draft PR #1: https://github.com/Sunset-Sunrise-Sun/CTFworker/pull/1
 - PR #1 is open, draft and unmerged. It contains the product framework, architecture, roadmap, decisions, security policy, migration audit and A0-2 task specification.
 - P0 source code has **not yet been imported into GitHub**. This branch is a product/documentation baseline, not yet a complete runnable migration.
