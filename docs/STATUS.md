@@ -1,49 +1,71 @@
 # Current Project Status
 
-Last reconciled: 2026-11-10 (project clock Asia/Shanghai).
+Last reconciled: 2026-11-10 (Asia/Shanghai).
 
-## Repository
+## Repository and review state
 
-- New repository: Sunset-Sunrise-Sun/CTFworker.
-- Default branch: main; repository was empty at initialization.
-- Documentation branch: docs/project-baseline.
-- The README initialization commit is on main. Product-baseline docs are being added on the documentation branch.
-- **The P0 source snapshot has not yet been imported into this GitHub repository.** The documentation branch is not a complete code migration.
+- Repository: Sunset-Sunrise-Sun/CTFworker.
+- Default branch: main.
+- Product/governance baseline branch: docs/project-baseline.
+- Draft PR #1: https://github.com/Sunset-Sunrise-Sun/CTFworker/pull/1
+- PR #1 is open, draft and unmerged. It currently contains the product north star, architecture, roadmap, decisions, security, migration audit and A0-2 task specification.
+- **The P0 source code has not yet been imported into GitHub.** The docs branch is not a complete code migration.
 
-## Product/code baseline
+## Product north star — frozen
 
-- Accepted source baseline: **a4d0762e1b5b7673a09ab5a2ac99656bc743925d** (P0-REVIEW-FIX-02).
-- The supplied source archive contains the P0 Manager Core implementation and its docs/tests.
-- P0 scope: task intake, immutable attachment handling, per-task workspace, two-slot FIFO scheduler, persisted task/Worker states and recovery, ACP v1 adapter contract, deterministic Mock Runner, SQLite event persistence, CAS artifacts and incremental Writeup.
-- P0 was independently accepted in the prior review, with follow-up notes. Do not reopen P0 broadly without a concrete regression.
+docs/PRODUCT_BLUEPRINT.md is the authoritative product framework:
+- one Harness GUI / Manager Session;
+- Scheme A: Skills for solving knowledge, native Harness tools for ordinary work, one CTF Tools MCP for heavy tools, thin Cordis host hooks, existing Workbench evidence backend;
+- five categories: Web, Misc, Crypto, Reverse and Pwn;
+- one task = one Worker = one task workspace;
+- at most two active Workers, FIFO beyond capacity;
+- human approval for sensitive actions;
+- SQLite + CAS as the single evidence authority;
+- evidence-derived Writeup and verifiable ZIP export;
+- Product P0–P3 acceptance gates.
 
-## P0-REVIEW-FIX-02 acceptance snapshot
+Do not confuse **Product P0** (profile + initial Skills + evidence service/tap + screenshot + doctor + E2E proof) with the accepted **engineering P0 Manager Core** source milestone.
 
-Reported historical candidate evidence:
-- Full backend: **532 passed, 7 skipped**.
-- Demo: **58/58**.
-- New review-fix regression set: **26 passed**.
-- Ruff: passed.
-- Post-commit full pytest and Ruff: passed.
+## Accepted engineering source baseline
 
-These are source-candidate results, not yet a fresh run from this new repository. Keep all 7 skips disclosed; platform/environment-limited tests are not silently counted as passed. Re-run checks after source import.
+- P0-REVIEW-FIX-02 source label: a4d0762e1b5b7673a09ab5a2ac99656bc743925d.
+- Original source archive: ctfworker_p0_a4d0762_source.zip.
+- Archive SHA-256: ef523c473ad1c047687191e10e93e7deed40db809e1670813b67a7d8f8b7c05f.
+- Original archive: 110 files, 1,916,345 uncompressed bytes; no .git metadata.
+- Use the original source archive, not the later 119-file convenience bundle, which replaced README.md and docs/ARCHITECTURE.md.
 
-## Follow-up notes (not P0 blockers)
+## A0-2 migration audit results
 
-1. CAS reuse may retain the first Artifact's evidence_kind when identical bytes are referenced later by a different semantic source. Export/de-identification must inspect all references/provenance, not rely on the first Artifact kind alone.
-2. A stale Worker lifecycle comment uses cancelled where current status is closed; update only when touching that code, with focused tests/docs.
-3. The source SHA manifest has line-ending-sensitive mismatches for several files in one review package. Verify raw bytes and normalization policy before changing it. Never rewrite checksums to hide a mismatch.
+Detailed evidence: docs/MIGRATION_AUDIT_20261110.md. Exact Codex task: docs/tasks/A0-2_P0_SOURCE_IMPORT.md.
+
+- Source archive SHA and ZIP comment verified.
+- P0 solver manifest: 24 raw matches + 6 LF-normalized matches; two documentation mismatches (README.md and docs/P0_SOLVER_FILES.md). Backend/app, backend/tests and solver_demo entries match after accounting for line endings.
+- KAT manifest: 4/4 match after LF normalization.
+- Two historical docs contain local absolute paths and must be redacted before public commit.
+- Offline demo: **58/58 passed**.
+- Backend tests as non-root Linux user, excluding only the Windows-only junction test: **536 passed, 2 skipped, 1 deselected**.
+- Full root Linux run: **533 passed, 2 skipped, 4 failed**; three read-only tests fail because root bypasses Unix mode bits, and one Windows-only junction test cannot find cmd.exe.
+- Ruff not available in this container; frontend npm ci --offline blocked because vue-tsc was not cached.
+- The supplied Ubuntu CI workflow invokes a Windows-only junction test unconditionally. Track a separate focused test-portability fix; do not silently alter the exact P0 import.
+
+These are local migration-audit results, not target-repository CI or Windows acceptance. Full pinned Windows/Ruff/frontend validation remains required.
+
+## Known P0 follow-up notes (not automatic blockers)
+
+1. CAS reuse may retain the first Artifact's evidence_kind when identical bytes are referenced later by a different semantic source. Export/de-identification must inspect all references/provenance.
+2. A stale Worker lifecycle comment says cancelled where current status is closed; update only when touching that code, with focused tests/docs.
+3. Preserve the historical SHA manifests; do not rewrite them to conceal line-ending or documentation mismatches.
 
 ## Host environment workstream
 
 - Phase 0 Windows baseline audit: reported complete.
 - Phase 2B-1F mirrored networking acceptance: reported PASS.
-- Outstanding at handoff: **dockerd did not inherit the host/WSL proxy**. This is an environment task, not a reason to alter Manager Core.
-- A narrowly scoped CC Safety Net exception request for writing Docker's public APT repository key was pending in the last recorded report. Do not assume approval or execute the blocked action without checking current status.
-- Do not change .wslconfig, firewall, proxy, VBS/HVCI, Docker daemon, OS features or reboot without explicit approval.
+- Outstanding: **dockerd did not inherit the host/WSL proxy**.
+- A narrowly scoped CC Safety Net exception for Docker's public APT key was pending in the last recorded report. Verify current status before any blocked action.
+- No changes to .wslconfig, firewall, proxy, VBS/HVCI, Docker daemon, OS features or reboot without explicit approval.
 
 ## Current single next task
 
-**A0-2: import the exact P0-REVIEW-FIX-02 source snapshot into this repository and run migration verification.**
+**A0-2: import the original 110-file P0 source archive into the docs/project-baseline branch, preserve the product north star, redact local paths, and run pinned Windows validation.**
 
-Do not begin real ACP integration or toolchain work in the same change. Preserve the P0 snapshot; link product docs without changing runtime behavior.
+Do not start real ACP integration, Skills/MCP implementation or toolchain installation in the same change. Keep PR #1 draft/open/unmerged for independent review.
