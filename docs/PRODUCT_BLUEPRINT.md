@@ -1,199 +1,232 @@
 # Product Blueprint — CTF Solver
 
-> **This is the product north star.** When implementation details, agent suggestions or later refactors conflict with this document, stop and raise an explicit decision request. Do not silently move the product toward a generic chat wrapper, a second agent platform or a second evidence store.
+> **Authoritative product north star.** Every implementation task follows this document. If a proposal conflicts with a settled decision, stop, record an ADR proposal and obtain explicit user approval before changing it.
 
-## 1. Product definition and intended experience
+## 1. Product definition
 
-CTF Solver is a **semi-autonomous, local-first CTF workbench** with one unified Harness entry point. The user submits challenges, provides or confirms scope, approves sensitive actions, confirms Flags and reviews the resulting evidence-backed Writeup. The system manages routine work: task intake, category routing, bounded Worker execution, progress collection, evidence capture, recovery and export.
+CTF Solver is a **semi-autonomous, local-first, evidence-first CTF workbench** with one unified Manager entry point. The user submits challenges, confirms authorization scope, approves sensitive actions, confirms candidate Flags and reviews evidence-backed Writeups. The system handles intake, category routing, bounded parallel work, progress collection, evidence capture, recovery and export.
 
-It is not:
-- a generic chatbot that merely gives solving suggestions;
-- a fully autonomous bot that attacks arbitrary targets;
-- a second standalone web platform duplicating the Harness UI;
-- a Writeup generator that invents a plausible solution from a final Flag;
-- a collection of disconnected Skills/MCP servers with competing task state.
+It is not a generic chatbot, a prompt collection, an arbitrary Internet attack bot, a second Agent platform, or a Writeup generator that invents a solve path from a final Flag.
 
-**The product outcome is a repeatable challenge-to-Writeup workflow whose actions, outputs and claims can be audited.**
+**Product outcome:** a repeatable challenge-to-Writeup workflow in which every claimed action and result is traceable to persisted evidence.
 
-## 2. Primary architecture decision
+## 2. Settled product decisions
 
-The feasibility audit's recommended target is **Scheme A: Skill as the brain, MCP as the hand, Cordis as the thin skeleton**, using Harness native capabilities wherever they already exist and reusing the existing CTF Workbench evidence backend.
+1. **One task, one Worker, one workspace.** A challenge never shares its active Worker context or workspace with another challenge.
+2. **Two active tasks maximum.** Default concurrency is two; the hard limit is two. The third and later tasks wait FIFO. This is a capacity guard, not the product's main selling point.
+3. **Manager coordinates; Worker solves.** Manager handles intake, queue, lifecycle, approvals, recovery and reporting. It does not absorb specialist analysis.
+4. **CLI/headless first.** Workers must solve through command-line and headless tools. GUI applications may be opened and real screenshots collected, but autonomous clicking through every GUI control is not a first-release requirement.
+5. **Autonomous exploration before escalation.** A Worker checks available tools, tries suitable installed alternatives and explores reasonable local approaches before reporting that it is stuck. It asks the user only when missing information, authorization, a decision or a genuine blocker prevents safe progress.
+6. **Environment prepared before solving.** First startup runs the G0 environment-readiness gate. Required tools are installed/configured in the approved environment, verified and frozen in `toolchain.lock`. Workers do not install software or alter the Windows host during a solve.
+7. **Skills are knowledge, not security.** Skills define solving methods and behavior; tool policy, approval checks and OS/container isolation enforce permissions.
+8. **SQLite + CAS are the sole evidence authority.** SQLite is the authoritative task/event/state store; CAS is the authoritative byte store. JSONL/Markdown/ZIP are derived outputs only. No dual-write or parallel queue/database.
+9. **Writeups are evidence-derived.** Missing steps remain visibly missing. A Flag or model statement alone is not proof.
+10. **Human approval for sensitive actions.** A Worker may request but never grant its own permission.
+11. **Public Git contains code, generic docs and synthetic fixtures only.** Real challenge files, Flags, credentials, raw logs, private target data, screenshots and real Writeups remain local.
 
-### 2.1 Target topology
+## 3. Target architecture — Scheme A
 
-    DeepSeek Harness — one window / Web GUI
-      Manager Session (ctf-manager preset + ctf-core Skill)
-        |-- asks user for missing challenge/scope information
-        |-- reads task state and queue from the Manager Core service
-        |-- relays approvals; never self-approves
-        |-- reports progress, blockers, outcomes and Writeup readiness
-        |
-        +-- Worker Session A (native subagent, task-specific cwd/preset)
-        +-- Worker Session B (native subagent, task-specific cwd/preset)
-                 |
-                 +-- ctf-core + one category Skill
-                 +-- Harness native tools for ordinary file/shell/web work
-                 +-- ctf-tools MCP for justified heavy/fixed-version tools
-                 +-- every relevant tool action -> Cordis evidence tap
-                                      |
-                 Thin Cordis host adapter / hooks
-                    |-- connects Harness lifecycle to Manager Core
-                    |-- forwards worker events and permission requests
-                    |-- captures evidence and screenshot metadata
-                    |-- does not create a second queue or event database
-                                      |
-                 Existing CTF Workbench evidence backend
-                    |-- SQLite append-only event/hash-chain store
-                    |-- content-addressed Artifact Store (CAS)
-                    |-- safe ZIP import and immutable originals
-                    |-- evidence-linked Writeup and ZIP export
-                                      |
-                 WSL2 / Docker execution boundary (later security gate)
-                    |-- per-task execution environment
-                    |-- filesystem/process/network/resource controls
+The selected architecture is **Skill as the brain, MCP as the hand, Cordis as the thin skeleton**, using Harness-native capabilities where appropriate and reusing the existing CTF Workbench evidence backend.
 
-The UI remains the Harness GUI. A small read-only queue/evidence panel may be considered later, but it must not become a parallel application or a second source of truth.
+```text
+Harness — one user-facing window
+  Manager Session
+    ├─ ctf-core workflow and policy guidance
+    ├─ TaskManager: intake, persisted queue, lifecycle, recovery, reporting
+    ├─ human approval relay; never self-approves
+    └─ Runner / ACP adapter
+         ├─ independent ACP Worker Session for task A
+         │    └─ workspace root = tasks/<task_id>/work
+         └─ independent ACP Worker Session for task B
+              └─ workspace root = tasks/<task_id>/work
 
-### 2.2 Worker host choice and profile prerequisite
+Worker bootstrap
+  ├─ ctf-core + exactly one category playbook
+  ├─ Harness/native CLI and headless tools for ordinary work
+  └─ one CTF Tools MCP server for justified heavy/fixed-version tools
 
-The audit recommended a dedicated **ctf profile (W1)**:
-- remove the experimental Team bundle that masks native subagent-control tools;
-- retain native subagent creation and control, Skills, jobs, filesystem and approval tools;
-- configure maxActiveSubagents=2 (or a deliberately reviewed value) and maxDepth=1;
-- enable only required optional capabilities, such as allowed presets, session query and MCP client;
-- use one native subagent session and one task-specific cwd per challenge.
+Thin Cordis / Host bridge
+  ├─ lifecycle and permission-request bridge
+  ├─ evidence hooks and screenshot metadata
+  └─ no second Agent loop, scheduler, task database or evidence store
 
-The Team-based W2 option is rejected for the first release because teammates share a cwd and do not provide the required per-worker cwd/model/preset control. A task-board-per-session W3 is only a fallback for later evaluation, not the default.
+Evidence backend
+  ├─ SQLite: task state + append-only event/hash chain + task/worker links
+  ├─ CAS: immutable input/output/agent-payload bytes by SHA-256
+  └─ evidence-linked Writeup and ZIP export
 
-**Profile changes are user-approved environment/configuration changes.** Do not edit the installed Harness profile or enable capabilities without explicit approval.
+Product P2 execution boundary
+  └─ WSL2 / Docker: filesystem, process, network and resource isolation
+```
 
-## 3. Single responsibility for each layer
+The Harness GUI remains the user-facing entry point. Do not build a second full-stack UI.
+
+### 3.1 Worker host decision: independent ACP Worker Session
+
+The accepted Worker carrier is **one independent ACP session per task**, created with that task's work directory as the session workspace, conceptually:
+
+```text
+session/new { workspace: <task workspace>/work }
+```
+
+The runtime audit established that the session workspace at session creation is the relevant write-permission root. A child Agent's `cwd` changes its working directory but does **not** change the session writable root; therefore "one native subagent + one cwd" is not sufficient for the required per-task write boundary.
+
+Consequences:
+- Manager creates/tracks one ACP Worker session/generation per task through Runner.
+- Worker workspace is exactly `tasks/<task_id>/work`; input originals, output collection and Writeup paths are not Worker write targets.
+- ACP v1 is limited to verified methods: `session/new`, `session/list`, `session/resume`, `session/prompt`, `session/cancel`, `session/close`, `session/request_permission`.
+- Do not invent ACP support for terminal APIs, plans, commands, elicitation, arbitrary extra writable directories, per-session presets, process suspend/resume or OS process kill. Manager/Runner/wrapper provides required orchestration outside ACP.
+- ACP session recovery is not the same as restoring a dead Agent process. After restart, Manager reconstructs task state/evidence; resume only if ACP confirms the session is resumable, otherwise create a new Worker generation. Never claim a process was restored if it was not.
+- A session workspace is not a kernel-enforced sandbox. Untrusted binaries/exploit code still require Product P2 isolation.
+
+The earlier native-subagent-as-Worker proposal is superseded. Native Harness tools may still serve Manager and verified wrappers, but do not revert the Worker host to a shared-session subagent design.
+
+### 3.2 Responsibility boundaries
 
 | Layer | Owns | Must not own |
 |---|---|---|
-| Harness GUI / Manager Session | Unified interaction, user questions, approvals relay, summaries and handoff | Heavy solving, a duplicate task database |
-| Manager Core service | Task state machine, authoritative queue/FIFO admission, Worker lifecycle contract, recovery and task-to-evidence links | Category-specific solving logic |
-| Harness native subagents | Worker sessions, isolated context, task cwd and native lightweight tools | Cross-task state or self-granted permissions |
-| Core Skill | Intake checklist, task routing, workflow, evidence discipline, Manager/Worker protocol and reporting format | Executable permission enforcement or storage |
-| Five category Skills | Domain knowledge and playbooks for Web, Misc, Crypto, Reverse and Pwn | Queue, secrets store, tool implementation or authorization |
-| Native Harness tools | Ordinary filesystem, shell, jobs and web operations | Heavy fixed-version toolchain wrappers already assigned to MCP |
-| One CTF Tools MCP server | Structured access to heavy/fixed-version tools such as Ghidra Headless, GDB batch/MI, pwntools, SageMath, controlled container execution and screenshot capture | Independent authorization policy or evidence database |
-| Thin Cordis plugin | Host hooks, Worker lifecycle bridge, permission relay, evidence tap and optional screenshot action | A second Agent loop, second scheduler, second task store or duplicate evidence store |
-| Evidence backend | SQLite event/hash-chain authority, CAS bytes, safe imports, Writeup rendering and export | Agent orchestration or free-form solving |
-| WSL2/Docker executor | OS-level filesystem/process/network/resource isolation | Product decisions or task state authority |
+| Harness GUI / Manager Session | Unified interaction, user questions, approval relay, summaries and handoff | Heavy solving or duplicate task database |
+| Manager Core / TaskManager | Authoritative task state, two-slot FIFO, Worker generations/lifecycle, recovery, task-to-evidence links | Category-specific solving |
+| Runner / ACP adapter | Worker session create/prompt/permission/cancel/close and lifecycle result | Task policy or second scheduler |
+| Core Skill | Intake workflow, routing, evidence discipline, escalation and Manager/Worker protocol | Permission enforcement, execution or persistence |
+| Five category Skills | Web, Misc, Crypto, Reverse and Pwn playbooks | Queue, storage, secrets or authorization |
+| Native Harness tools | Ordinary file/text/CLI/headless work and auxiliary research | Heavy fixed-version wrappers assigned to MCP |
+| One CTF Tools MCP server | Structured heavy tools: Ghidra Headless, GDB, pwntools, SageMath, controlled container execution and screenshot capture where justified | Arbitrary shell, self-authorization or evidence DB |
+| Thin Cordis / Host bridge | Host lifecycle hooks, permission relay, evidence tap, screenshot metadata | Second Agent loop, scheduler, task store or evidence store |
+| Evidence backend | SQLite authority, CAS bytes, imports, event links, Writeup and export | Agent orchestration |
+| WSL2/Docker executor | OS-level filesystem/process/network/resource isolation | Product state or task policy |
 
-**Classification rule:** if it teaches the model how to solve, it belongs in a Skill; if it executes a structured heavy tool, it belongs in the CTF Tools MCP; if it must happen automatically or be enforced across sessions, it belongs in Manager Core / the thin Cordis bridge / OS execution boundary; if it records evidence, it belongs in the existing evidence backend.
+**Layer rule:** knowledge/playbooks → Skill; structured heavy execution → MCP; automatic host integration → thin Cordis/Host bridge; task/queue/lifecycle authority → Manager Core; evidence persistence → existing SQLite/CAS backend; hard isolation → OS/container executor.
 
-## 4. Challenge lifecycle — required end-to-end behavior
+### 3.3 Separate network channels
 
-1. **Submit:** user provides challenge name, category, description, optional screenshot/ZIP, container flag, target/range address and ports.
-2. **Intake:** Core Skill checks missing information and asks the user. The import service validates the ZIP, preserves original bytes immutably, hashes them, creates a manifest and provisions the task workspace.
-3. **Declare scope:** target and authorization are recorded separately. A target address in a challenge statement is not proof of permission.
-4. **Queue:** Manager Core persists task state and admits at most two active tasks. Others wait in FIFO order.
-5. **Spawn:** Manager creates one Worker session for the task, with the category preset and task-specific cwd. Each Worker sees only its own task context and workspace contract.
-6. **Route:** Worker loads ctf-core plus exactly the relevant category Skill. The Manager does not load all five specialist playbooks into its own context.
-7. **Solve loop:** Worker forms a hypothesis, uses native tools or the CTF Tools MCP, observes the real result, updates its hypothesis and reports meaningful progress/blockers to Manager.
-8. **Authorize:** remote access, Pwn exploitation and other sensitive actions require a narrow, explicit, task-bound, time-bounded approval. Worker requests; human approves; the policy layer enforces. No approval is inherited across tasks.
-9. **Capture evidence:** tool action/result, timestamps, task/worker identity, exit status where available, artifact digest and screenshot provenance are captured as the work happens. Worker self-report alone is not proof that a command ran.
-10. **Complete/recover:** Manager records solved, unsolved, failed or cancelled. Interrupted work retains its evidence and can be resumed or rebuilt according to the lifecycle contract.
-11. **Confirm Flag:** distinguish candidate, user-confirmed and externally/platform-verified. A user confirmation is not a platform verification.
-12. **Writeup/export:** generate Markdown from persisted events and artifacts; each claim links to evidence. Missing steps remain explicitly missing. User reviews/edits the draft, then exports a ZIP with manifest and SHA256SUMS.
+- **Auxiliary research:** ordinary Harness web search/fetch for public documentation and references. Challenge targets are blocked from this channel.
+- **Challenge range:** target interaction uses structured `ctf-range-*` tools only, checking task ID, exact target, port/protocol, action and current authorization window on every call.
+- The two channels are separated at the tool/policy boundary. No Worker may route target traffic through generic web tools or arbitrary shell.
+- MCP processes run outside the Harness shell sandbox/approval mechanism. Each MCP operation must enforce its own task identity, permission, network scope, timeout, output and isolation checks.
 
-## 5. Product invariants
+## 4. First-start environment readiness — G0
 
-- **One challenge = one Worker = one task workspace.** No shared cwd across active challenges.
-- **At most two active Workers; FIFO beyond capacity.** Pause is not a free slot in the current P0 contract; paused work retains its slot. Slot release follows confirmed shutdown.
-- **Manager does not do heavy solving.** It coordinates, asks, approves via the human, monitors and reports.
-- **One approval path.** No Worker self-approval; permissions are explicit and scoped to a task/target/action/expiry.
-- **Evidence is append-only.** Corrections append new records and refer to the original; they do not rewrite history.
-- **SQLite is the only authoritative task/event state store.** Do not add queue.json, a second SQLite database or JSONL as another source of truth.
-- **CAS is the authoritative byte store.** Originals remain immutable; agent payloads and candidate Flag plaintext do not enter SQLite event payloads.
-- **Writeup is evidence-derived.** Never invent commands, outputs, screenshots, Flag verification or missing steps.
-- **Directory isolation is not a sandbox.** Real untrusted binaries require OS/container enforcement.
-- **Local-first.** Real challenge material, credentials, Flags, raw logs and Writeups do not enter this public repository.
-- **Scope-limited use only.** No arbitrary Internet targets, competition infrastructure, scoreboard, registration or submission endpoint attacks.
+G0 is a prerequisite **before the first formal solve**, not a tool-installation discussion repeated for every challenge.
 
-## 6. Product phases from the feasibility audit
+1. Run a read-only doctor across the approved host/WSL/container environment.
+2. Check required baseline tools for all five categories: executable presence, version, path, health/self-test and execution environment.
+3. Install/configure missing baseline tools only through the separately approved environment workflow. Workers never install tools or modify Windows host state.
+4. Run self-tests and freeze verified versions in `toolchain.lock` with a doctor report.
+5. Enable only categories/modes whose toolchain and isolation prerequisites pass.
+6. Warm-up challenges may reveal missing tools. Add them to the reviewed inventory, install through the environment workflow, rerun doctor and update the lock.
 
-These are **product release phases P0–P3**. They are not the same numbering as the later engineering milestone called “P0 Manager Core”.
+If a tool is unexpectedly unavailable during a solve, the Worker checks the frozen inventory and safe installed alternatives. If none can progress, it reports an environment blocker; it does not install software itself.
+
+## 5. End-to-end task lifecycle
+
+1. **Submit:** user provides challenge name/category/description, optional screenshot or ZIP, and declared target/container details.
+2. **Intake:** validate metadata/archive; preserve original bytes immutably; hash and manifest; provision task workspace.
+3. **Scope:** record authorization separately from target details. A target in a prompt or attachment is not proof of permission.
+4. **Schedule:** Manager admits at most two active tasks; later tasks queue FIFO.
+5. **Create Worker:** Runner creates one ACP session with that task's work directory as workspace root.
+6. **Route:** bootstrap ctf-core and only the matching category playbook.
+7. **Explore and solve:** Worker uses CLI/headless tools first, captures actual results and updates hypotheses.
+8. **Escalate only when blocked:** after reasonable autonomous exploration and installed-tool alternatives, report the exact blocker, attempts and evidence to Manager.
+9. **Authorize:** Manager relays request; human approves; policy enforces. No self-approval or permission inheritance across tasks.
+10. **Capture:** record action/result, timestamps, exit status where available, task/worker identity, digest and screenshot provenance.
+11. **Close/recover:** stop confirmation precedes close and slot release. Unconfirmed stop or failed close keeps the Worker mapped and slot occupied; cleanup-pending is visible and retryable.
+12. **Confirm/deliver:** preserve Flag state, generate evidence-derived Writeup, review gaps, export manifest + SHA-256 checksums.
+
+### 5.1 Concurrency and lifecycle
+
+- Default active task count: **2**; hard maximum: **2**.
+- Third and later tasks enter persisted FIFO.
+- One task has at most one active Worker generation.
+- Paused tasks retain their slot in the current contract.
+- Cancel is terminal. Queued cancellation creates no Worker session.
+- Running Worker releases its slot only after Runner confirms stop and the session is closed.
+- If stop is unconfirmed or close fails, retain slot and Worker mapping; record a safe diagnostic and require cleanup retry.
+
+## 6. Solving behavior by category
+
+All categories use the common Core Skill workflow. Category Skills supply specialist knowledge, not permissions.
+
+| Category | Agreed strategy |
+|---|---|
+| **Misc** | Inspect file type, metadata, containers, encodings, steganography and authorized traffic captures. For encrypted archives, analyze format/metadata/password hints first, then make bounded local password attempts. Ask the user only after reasonable local paths are exhausted. |
+| **Crypto** | Combine mathematical reasoning with reproducible tool calculations. Seek a mathematical breakthrough first; use Python/Sage or other verified tools to calculate, test and validate. |
+| **Reverse** | Static analysis first (strings, headers, disassembly, decompilation, control/data flow). Dynamic execution only inside an accepted independent isolation environment. |
+| **Pwn** | Local analysis/testing first. Remote exploitation requires a one-time human grant scoped to the same task, target and time window. After approval, autonomously validate within that scope. Completion/expiry invalidates the grant; it never transfers. |
+| **Web** | Source, configuration and local reproduction first. Remote requests only to the explicitly authorized challenge target and approved action; no broad scanning/enumeration. |
+
+## 7. Authorization and safety
+
+- Worker requests permission; it cannot grant permission to itself.
+- Approval is separate from execution and checked at the enforcement point on every protected operation.
+- Pwn uses **window semantics**: one approval permits a continuous bounded sequence for the same task and target during the approved time window. Completion/expiry invalidates it.
+- Generic research and challenge-range access are separate channels.
+- No arbitrary Internet attacks, competition-platform/scoreboard/registration/submission attacks, Flag-submission brute force, denial of service, broad scanning, cross-team data sharing or out-of-scope pivoting.
+- Organizer rules and explicit scope take precedence.
+- Directory/session boundaries are not OS sandboxing. Untrusted binaries/exploit code remain disabled until Product P2 isolation gates pass.
+
+## 8. Evidence, Flag and Writeup contract
+
+### 8.1 Single authority
+- SQLite is the only authoritative task/event/state store.
+- CAS is the authoritative byte store, keyed by SHA-256.
+- JSONL, Markdown, screenshots, manifests and ZIPs are derived outputs only; no dual-write.
+- Events use authoritative task/worker IDs and append-only integrity chaining.
+- Original inputs are immutable; workspace copies are read-only and re-hashed.
+- Agent payload bytes go to CAS; SQLite stores only non-sensitive digest/size/reference metadata. Do not copy raw Agent payload into event JSON.
+- Worker event whitelist excludes system-owned approval, task-state, worker-close and verified-Flag transitions.
+
+### 8.2 Flag states
+1. **Candidate:** Manager stores the value as a protected CAS artifact and records only digest/length/reference in SQLite.
+2. **User-confirmed:** user confirms the candidate; this is not external/platform verification.
+3. **Verified:** only a real configured FlagVerifier may produce this state, with verifier source/reference.
+
+Never store Flag plaintext in SQLite events or normal logs. Export excludes/redacts `flag_capture` and sensitive `agent_event_payload` artifacts by default.
+
+### 8.3 Writeup
+Writeup is generated only from persisted task events and referenced evidence. Every factual command, observation, transformation and conclusion cites event/artifact IDs. Distinguish fact, hypothesis, failed attempt, human note and retrospective note. Missing evidence is a visible gap; never invent a command, output, timestamp, tool, screenshot or intermediate step. Solve status and Writeup completeness are separate.
+
+Export Markdown first, then a reviewed ZIP with manifest and SHA-256 checksums. Sensitive Flag and Agent payloads are excluded/redacted by default.
+
+## 9. Product release gates
+
+These are **Product P0–P3**, not the engineering milestone called P0 Manager Core.
 
 ### Product P0 — prerequisites and feasibility proof
-
 Deliver:
-- dedicated ctf profile (after user approval);
-- thin ctf-core Skill plus thin ctf-misc and ctf-web;
-- evidence service reusing the existing Workbench store/artifact/import/export code;
-- Cordis evidence tap for native/MCP tool actions;
-- screenshot collector recording window/process/time/hash metadata;
-- first-run doctor snapshot for tool versions, WSL/container availability, disk and relevant host constraints.
+- approved CTF runtime/profile setup;
+- G0 doctor, baseline toolchain inventory and `toolchain.lock`;
+- thin ctf-core and initial Misc/Web Skills;
+- Manager Core connected to selected ACP Worker Session host;
+- evidence tap for real Harness/ACP tool actions;
+- real screenshot collector with window/process/time/hash attribution;
+- one synthetic Misc task and one local Web task end to end.
 
-Hard acceptance: two synthetic challenges (Misc file analysis and local Web lab) complete intake → analysis → tool action → real screenshot → candidate Flag → evidence-linked Writeup → export. Verify hash chain, tamper/truncation detection, missing-evidence marking, screenshot provenance, restart continuity and rejection of fabricated Writeup steps.
+Exit gate: both tasks complete intake → Worker analysis → captured CLI/headless action/result → real screenshot → candidate Flag → evidence-linked Writeup → export. Hash-chain/tamper/truncation, missing-evidence, screenshot provenance, restart continuity and fabricated-step rejection pass.
 
 ### Product P1 — core solving loop
-
-Deliver:
-- Manager/Core workflow and thin Cordis host bridge;
-- persisted FIFO scheduler with no more than two active Workers;
-- Manager reporting, approval relay, stalled-task reporting and recovery protocol;
-- five Skills (Web/Misc/Reverse first; Crypto/Pwn playbooks added with clear environment gates);
-- one CTF Tools MCP v1 for justified heavy tools;
-- evidence-linked Writeup generator and scoped authorization ledger.
-
-Acceptance: submit three tasks, observe two active and one FIFO queued; exercise pause/resume/query; solve at least three authorized/synthetic tasks per enabled category; all tool calls have evidence; unauthorized remote access is rejected and recorded; Worker failure preserves evidence.
+Deliver reliable Manager/ACP Workers and persisted two-slot FIFO; autonomous explore-before-escalate; five Skills; one CTF Tools MCP v1; dual network channels; scoped authorization ledger; evidence-linked Writeup/export.
+Exit gate: three tasks prove two active + one FIFO queued; stop/close/cleanup/recovery pass; enabled categories solve synthetic/authorized tasks; every tool action has evidence; unauthorized remote access is rejected and recorded.
 
 ### Product P2 — isolation and permissions
+Depends on separate approved WSL2/Docker work.
+Deliver WSL2 Ubuntu, Docker per task, version-pinned non-root toolchain, task mounts, minimal capabilities, no host Docker socket mount, default-deny egress, exact target allowlists, resource/output/time limits, one-shot Pwn grants and verified cleanup.
+Exit gate: escape/host-file/unapproved-egress tests fail closed; quotas hold; grants expire and never cross tasks; synthetic Pwn/Crypto and all enabled categories pass.
 
-Depends on explicit approval for WSL2/administrator/reboot work.
+### Product P3 — authorized warm-up validation and freeze
+Deliver signed/versioned doctor snapshot and drift detection; competition CONDITIONS profile; startup/recovery/export manual; evidence/Writeup quality review.
+Exit gate: authorized warm-up tasks per enabled category produce auditable Writeups; recovery/export pass; no fabricated steps or out-of-scope traffic.
 
-Deliver:
-- WSL2 Ubuntu 24.04 and versioned CTF toolchain;
-- Docker Engine inside WSL2; one container per task;
-- execution adapter with Windows/WSL/container modes and directory/file/process/network controls;
-- default-deny network with exact domain or IP+port allowlists;
-- one-shot Pwn grant bound to target, time window and interaction method;
-- screenshot attribution for multiple Workers and headless Web evidence.
+If Docker readiness is delayed, only modes whose toolchain/isolation gates pass may proceed. Misc/Web/Reverse static analysis may be enabled in the safe Windows envelope; dynamic Reverse, Pwn and Linux-dependent Crypto remain blocked where required isolation/tooling is absent. Never simulate capability.
 
-Acceptance: block container escape, host-file access and unapproved egress; enforce CPU/memory/disk limits; prove one-shot grants expire and never cross tasks; exercise all five categories including synthetic Pwn/Crypto.
+## 10. Engineering and environment tracks
 
-### Product P3 — competition validation and freeze
+Engineering: **A0** repository/product baseline and source migration; **A1** P0 Manager Core; **A2** real ACP Worker integration; **A3** evidence hooks/Collector/screenshots; **A4** Skills + CTF Tools MCP; **A5** authorization + OS isolation; **A6** Writeup/export E2E; **A7** authorized practice pilot.
 
-Deliver:
-- signed/versioned environment doctor snapshot and drift alerts;
-- competition CONDITIONS profile (rules, authorization, Flag format, AI disclosure);
-- operations guide for startup, recovery, evidence export and Flag-state confirmation;
-- post-event Writeup evidence-quality review.
+Separate environment workstream **B0–B5** covers Windows audit, WSL2 networking, Docker proxy inheritance, Docker Engine validation, toolchain image and isolation acceptance. Environment work must not silently alter application contracts. OS/admin/firewall/proxy/security/reboot actions require explicit user authorization and any required policy approval.
 
-Acceptance: at least one authorized warm-up challenge produces an auditable Writeup; interrupted task recovery succeeds; export hashes verify; no fabricated steps or out-of-scope traffic; user actions are limited to submit, approve, confirm Flag and review reports.
+## 11. Change control
 
-If WSL2 approval or Docker readiness is delayed, Misc/Web/Reverse static analysis may proceed within the safe Windows capability envelope. Pwn/Crypto requiring Linux toolchains remain explicitly blocked; do not simulate capability.
+Changes to the unified Harness entry point, Scheme A responsibilities, ACP Worker decision, five categories, one-task/one-Worker model, two-worker hard limit, G0, CLI-first strategy, single SQLite/CAS authority, approval boundary, category strategy or Product P0–P3 gates require written rationale, alternatives, decision-log entry, security/evidence/acceptance impact and explicit user approval.
 
-## 7. Architecture options considered
-
-- **A — Skill + MCP + thin Cordis (selected target):** lowest duplication, Harness-native main path, one window, existing evidence backend reused.
-- **B — Cordis platformization:** stronger control but 2–3× implementation/maintenance cost and deeper dependency on unstable host internals. Keep only the useful isolation/policy concepts for P2.
-- **C — Harness + Agoni dual-agent system:** rejected for first release because it duplicates Agent loops, context, tools and evidence, while several domain implementations were incomplete in the audited version.
-- **D — MCP maximum:** rejected as the primary architecture because MCP cannot automatically observe every Harness tool event; evidence would depend too much on Worker self-report. MCP remains appropriate for heavy tools and evidence queries.
-
-## 8. How the later P0 Manager Core fits — no architecture drift
-
-The accepted **P0-REVIEW-FIX-02 Manager Core** is an engineering foundation, not the whole product and not a replacement for the target topology above.
-
-It provides a portable, deterministic core: TaskManager, two-slot FIFO Scheduler, per-task workspace, intake, Runner/ACP contracts, Mock Runner, SQLite event persistence, CAS evidence and incremental Writeup. It deliberately does **not** provide a real ACP process, live Harness Worker, ctf profile, five category Skills, real binary execution, target access, Docker isolation or a separate product UI.
-
-Integration guardrails:
-- Manager Core remains the authoritative task/queue/state owner. Cordis must bridge Harness events and Worker lifecycle into it; Cordis must not maintain a competing queue or database.
-- Runner remains the runtime seam. The actual Host Worker adapter must be selected by a small A2 integration spike: compare the audited native subagent-control route with the P0 ACP adapter contract. Do not claim either is connected until a real, isolated smoke test proves create/update/permission/stop/close/recovery.
-- The P0 ACP contract is not proof that ACP can provide every desired Host feature. Unsupported calls must remain explicit failures.
-- Reuse the existing SQLite/CAS backend; no parallel evidence store.
-- Keep the Harness GUI as the product entry point; do not expand the existing frontend into a second application.
-- Preserve the original product P0–P3 acceptance gates. Passing Manager Core tests alone does not complete product P0.
-
-## 9. Change control
-
-Any proposed change to the unified Harness entry point, Scheme A layer responsibilities, five categories, one-task/one-Worker model, two-worker FIFO limit, single SQLite/CAS evidence authority, evidence-derived Writeup, human approval boundary, or product P0–P3 gates requires:
-1. a written rationale and alternatives;
-2. a decision-log entry;
-3. impact on security, evidence and acceptance criteria;
-4. explicit user approval before implementation.
-
-Until then, this blueprint is the product north star.
+For every new conversation or agent, read README and AGENT_WORKFLOW.md. **The repository is the source of truth; chat history is not a substitute.**

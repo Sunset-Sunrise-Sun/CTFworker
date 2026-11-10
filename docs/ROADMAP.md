@@ -1,61 +1,63 @@
 # Roadmap and Phase Gates
 
-This roadmap has **three separate tracks**. Do not confuse them:
-- **Product phases P0–P3** define what the user-facing CTF Solver must deliver.
-- **Engineering milestones A0–A7** describe implementation of the reusable code foundation and integrations.
-- **Host-environment phases B0–B5** prepare WSL2/Docker and isolation. Environment setup is not product capability by itself.
+Three tracks remain separate:
+- **Product P0–P3:** user-facing outcomes and acceptance gates.
+- **Engineering A0–A7:** code migration and integration.
+- **Environment B0–B5:** WSL2/Docker/toolchain and OS isolation.
 
-The product phase definitions and hard acceptance criteria are authoritative in PRODUCT_BLUEPRINT.md.
+PRODUCT_BLUEPRINT.md is authoritative. A phase is complete only when its exit gate is evidenced; a code milestone does not imply a product phase is complete.
 
-## 1. Product roadmap P0–P3 (authoritative)
+## 1. Product roadmap
 
-| Product phase | Goal | Main deliverables | Exit gate | Current state |
+| Phase | Goal | Deliverables | Exit gate | State |
 |---|---|---|---|---|
-| P0 — Prerequisites and feasibility proof | Prove a real single-task loop on the approved Windows capability envelope | Dedicated ctf profile; ctf-core + thin Misc/Web Skills; reused evidence service; Cordis evidence tap; real screenshot collector; environment doctor | Two synthetic tasks complete intake → tool action → real screenshot → evidence-linked Writeup → export; chain/tamper/truncation/restart/fabrication tests pass | **Not complete** |
-| P1 — Core solving loop | Manager + up to two Workers solve enabled categories | Persisted FIFO; Manager/Worker protocol; five Skills; one CTF Tools MCP; evidence-linked Writeup; scoped authorization ledger | Three tasks prove two active + one FIFO; enabled categories pass synthetic/authorized tasks; every tool action evidenced; unauthorized access rejected | Planned |
-| P2 — Isolation and permissions | Safely enable untrusted binaries, Pwn and Crypto workflows | WSL2 Ubuntu; Docker per task; execution adapter; filesystem/process/network/resource controls; default-deny egress; one-shot Pwn grants | Escape/host-file/egress blocked; quotas enforced; grants expire and never cross tasks; all five categories exercised | Blocked on environment and approvals |
-| P3 — Competition validation and freeze | Prove warm-up competition readiness | Signed environment doctor; competition CONDITIONS profile; operations/recovery manual; Writeup quality review | Authorized warm-up challenge produces auditable Writeup; recovery and ZIP checks pass; no fabricated evidence or out-of-scope traffic | Planned |
+| P0 — Prerequisites/feasibility | Prove first-start readiness and one local evidence-backed solve loop | G0 doctor + toolchain.lock; approved CTF runtime/profile; ctf-core + initial Misc/Web Skills; ACP Worker host; evidence tap; real screenshot collector; synthetic Misc and local Web E2E | Two tasks complete intake → CLI/headless action → captured result → real screenshot → candidate Flag → evidence-linked Writeup → export; integrity/recovery/fabrication tests pass | Not complete |
+| P1 — Core solving loop | Reliable Manager + up to two Workers across five categories | Persisted FIFO; explore-before-escalate; five Skills; one CTF Tools MCP; dual network channels; scoped authorization; evidence Writeup | Three tasks prove two active + one FIFO; lifecycle/recovery pass; enabled categories solve synthetic/authorized tasks; every action evidenced; unauthorized access rejected | Planned |
+| P2 — Isolation/permissions | Safely enable untrusted binaries and remote exploit modes | WSL2 Ubuntu; Docker per task; version-pinned non-root toolchain; filesystem/process/network/resource controls; default-deny egress; one-shot Pwn grants | Escape/host-file/unapproved-egress blocked; quotas enforced; grants expire and never cross tasks; enabled category gates pass | Blocked on environment gates |
+| P3 — Authorized warm-up/freeze | Prove competition readiness | Signed/versioned doctor; competition CONDITIONS profile; startup/recovery/export manual; evidence quality review | Authorized warm-up tasks produce auditable Writeups; recovery/export pass; no fabricated steps or out-of-scope traffic | Planned |
 
-**Important naming distinction:** “P0-REVIEW-FIX-02 Manager Core” is an engineering code milestone. It does not mean Product P0 above is complete.
+**Naming warning:** engineering P0 Manager Core (P0-REVIEW-FIX-02) is not Product P0.
 
-## 2. Engineering workstream A — code and integration
+## 2. Engineering workstream A
 
-| Milestone | Scope | Exit criteria | Status |
+| Milestone | Scope | Exit criteria | State |
 |---|---|---|---|
-| A0 — Repository/product baseline | Product blueprint, charter, architecture, decisions, security, roadmap and agent handoff rules | Repository docs agree; one north star and one next task | Documentation baseline on PR #1; source import pending |
-| A1 — P0 Manager Core | Intake, immutable inputs, per-task workspace, two-slot FIFO, persisted state/recovery, Runner/ACP contracts, Mock Runner, SQLite events, CAS and incremental Writeup | Historical candidate review and demo accepted; re-run after import | **Accepted source candidate**: P0-REVIEW-FIX-02 |
-| A2 — Real Host Worker adapter | Bind the Manager Runner contract to the selected Harness Worker host (native subagent-control or ACP after an explicit spike) | Isolated real create/update/permission/stop/close/recovery smoke; no target access required | Not started; runtime choice remains open |
-| A3 — Evidence automation | Connect real Host tool events/results to Collector; provenance, screenshots, artifact closure and audit completeness | Reproducible synthetic E2E; tamper/truncation and missing-evidence tests | Planned |
-| A4 — Skills and tool adapters | Core Skill + Web/Misc/Crypto/Reverse/Pwn playbooks; native light tools; one CTF Tools MCP for heavy tools | Category routing tests; no duplicated permission/storage logic; adapter security review | Planned |
-| A5 — Execution isolation and authorization | WSL2/Docker boundary, per-task mounts, quotas, target allowlists, one-shot grants and fail-closed behavior | Escape/network tests, CPU/memory limits, shutdown and cleanup tests | Planned; depends on B workstream |
-| A6 — Writeup/export integration | Evidence-linked Writeup, human draft/version conflict handling, Flag states, final ZIP and SHA256SUMS | Consistent snapshot; no fabricated steps; hashes verified | Core primitives inherited; full product flow not yet verified |
-| A7 — Authorized practice pilot | One approved practice challenge per category, then staged expansion | Human sign-off, evidence audit, no out-of-scope traffic, repeatable result | Not started |
+| A0 — Repository/product baseline | North-star docs, decision log, security and handoff | One authoritative blueprint; status and next task explicit | Docs baseline on Draft PR #1 |
+| A1 — P0 Manager Core source | Intake, immutable inputs, workspace, two-slot FIFO, state/recovery, Runner/ACP contracts, Mock Runner, SQLite, CAS, incremental Writeup | Exact source imported; target checks rerun; independent review passes | Accepted source candidate; migration pending |
+| A2 — Real ACP Worker integration | Connect Runner to independent ACP Worker sessions with task work-root | Isolated create/prompt/permission/cancel/close/recovery smoke; no target access | Not started; ACP selected |
+| A3 — Evidence automation | Real Host tool hooks, Collector, screenshots, artifact closure and provenance | Synthetic E2E; tamper/truncation/missing-evidence tests | Planned |
+| A4 — Skills and tool adapters | ctf-core + Web/Misc/Crypto/Reverse/Pwn; native light tools; one CTF Tools MCP | Routing/playbook tests; MCP security contract S1–S7 passes | Planned |
+| A5 — Isolation and authorization | WSL2/Docker executor, task mounts, quotas, target allowlists, one-shot grants | Escape/network/resource/shutdown/cleanup tests | Planned; depends on B |
+| A6 — Writeup/export | Evidence-linked report, human draft/versioning, Flag states, ZIP/checksums | Consistent snapshot, provenance and default-redaction tests | Core primitives exist; full product flow unverified |
+| A7 — Authorized practice pilot | Approved warm-up tasks per enabled category | Human sign-off, evidence audit and repeatability | Not started |
 
-## 3. Host-environment workstream B
+## 3. Environment workstream B
 
-| Phase | Scope | Handoff status |
+| Phase | Scope | Last known state |
 |---|---|---|
-| B0 — Windows baseline audit | Host capability and constraints inventory | Reported complete |
-| B1 — WSL2 networking foundation | WSL2 mirrored networking and proxy path | Reported PASS in Phase 2B-1F |
-| B2 — Docker daemon proxy inheritance | Ensure dockerd/containerd inherit the required proxy | **Known outstanding issue** in Phase 2B-1F handoff |
-| B3 — Docker Engine validation | Official packages, daemon startup, image pull and hello-world | Not confirmed complete |
-| B4 — CTF toolchain image | Version-pinned tools, non-root runtime, minimal capabilities and resource limits | Not started |
-| B5 — Isolation acceptance | Mount, process, network, privilege, resource and cleanup tests | Not started |
+| B0 | Windows baseline audit | Reported complete |
+| B1 | WSL2 networking foundation | Reported PASS |
+| B2 | Docker daemon proxy inheritance | Outstanding in last handoff; verify before action |
+| B3 | Docker Engine install/start/hello-world | Not confirmed complete |
+| B4 | Version-pinned CTF toolchain image | Not started |
+| B5 | Per-task isolation acceptance | Not started |
 
-Environment changes affecting OS features, reboot, administrator privileges, security controls, firewall, proxy, Docker daemon or persistent host configuration require explicit user approval. A narrowly scoped CC Safety Net exception request for Docker's public APT key was pending in the last recorded report; verify its current status before any action.
+The environment agent owns B tasks. Application development does not authorize OS mutations. Administrator actions, reboot, firewall/proxy/security settings, Docker daemon changes and policy exceptions require explicit user authorization and any required Safety Net approval. Do not infer policy approval from project-level authorization.
 
-## 4. Dependency rules and immediate order
+## 4. Dependency order — one active task at a time
 
-1. Complete A0-2: import the exact accepted P0 source snapshot into this repository, preserving the product blueprint and redacting local machine paths from historical logs.
-2. Run the source migration tests in the target repository and record environment-specific skips/failures honestly.
-3. Complete independent review of the migration PR before merge.
-4. Then prepare the A2 Worker-host adapter spike against the frozen Runner/ACP contract. Do not assume native subagent and ACP are interchangeable.
-5. Product P0 work (profile, Skills, evidence tap, screenshot and doctor) must be planned and accepted before claiming Product P0 complete.
-6. Resolve B2/B3 only with explicit approval; do not let environment work silently modify Manager Core.
-7. Do not start real target access or untrusted binary execution until the relevant Product P2 security gates pass.
+1. **A0-2:** import the exact original 110-file P0 source archive into docs/project-baseline. Preserve north-star docs, apply only specified path redactions/renames, and rerun target-repository checks.
+2. Independently review the migration PR; keep draft/open/unmerged until accepted.
+3. **A2:** implement real ACP Worker adapter against frozen Runner contract. No target traffic required for smoke tests.
+4. **A3:** connect actual Host tool events/results and screenshots to the authoritative Collector.
+5. **A4:** implement Skills and one structured CTF Tools MCP server.
+6. **A5/B:** complete environment readiness and OS/container isolation before untrusted binaries or remote exploit execution.
+7. **A6/A7:** complete Writeup/export E2E and authorized warm-up pilot.
 
-If WSL2 approval or Docker readiness is delayed, Misc/Web/Reverse static analysis may proceed within the safe Windows capability envelope. Pwn/Crypto requiring Linux toolchains remain explicitly blocked; do not simulate capability.
+Do not bundle A2–A7 into source migration. If an acceptance test exposes a migration defect, stop and classify it before expanding scope.
 
-## 5. Definition of done for every task
+If WSL2/Docker readiness is delayed, enable only modes whose current toolchain/isolation gates pass. Do not simulate capability.
 
-Every task must have scope and non-goals, exact files/interfaces changed, actual commands and output, security/failure-path analysis, evidence/checksums where relevant, updated STATUS.md and DECISIONS.md, and reviewer disposition (PASS / PASS-WITH-NOTES / REQUEST-CHANGES / BLOCKED).
+## 5. Definition of done
+
+Every task records task ID/phase, product outcome, scope/non-goals, starting branch/HEAD, changed files, preserved interfaces, actual commands/outputs/exit codes, skips/failures, security evidence, artifact hashes, limitations, updated STATUS.md and reviewer disposition (PASS / PASS-WITH-NOTES / REQUEST-CHANGES / BLOCKED).

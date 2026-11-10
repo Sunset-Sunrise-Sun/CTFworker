@@ -1,102 +1,151 @@
 # Architecture and Responsibility Boundaries
 
-## 1. Current architecture (P0 implementation boundary)
+This document separates the **current P0 Manager Core implementation** from the **target CTF Solver product architecture**. PRODUCT_BLUEPRINT.md is the product authority.
 
-    User
-      -> Existing Workbench UI / API
-      -> TaskManager (single public orchestration entry point)
-         -> IntakeService: attachment validation, manifest, CAS
-         -> WorkspaceService: per-task paths and path safety
-         -> Scheduler: two active slots and FIFO
-         -> Runner protocol
-              -> ACPClient protocol (ACP v1 surface)
-              -> MockRunner / MockACPClient (deterministic P0 implementation)
-         -> SolverStore: authoritative SQLite writes and task events
-         -> WriteupService: evidence-linked incremental Markdown
-                    -> existing ArtifactStore / SHA-256 CAS
+## 1. Current P0 Manager Core
 
-The current package is backend/app/solver/. Services are injected behind protocols so scheduling, storage, intake and Writeup can be tested independently.
+```text
+Existing Workbench API / UI
+  -> TaskManager
+      -> IntakeService
+      -> WorkspaceService
+      -> two-slot FIFO Scheduler
+      -> Runner protocol
+          -> ACPClient adapter contract
+          -> MockRunner / MockACPClient (P0 only)
+      -> SolverStore
+          -> SQLite task/event state and event links
+          -> existing ArtifactStore / SHA-256 CAS
+      -> WriteupService
+```
 
-## 2. Component ownership
+Source package: `backend/app/solver/`; public entry point: `app.solver.manager.TaskManager`.
+
+P0 supplies task intake, immutable input handling, per-task workspace construction, persisted two-slot FIFO scheduling, Worker lifecycle contracts, deterministic Mock Runner behavior, task recovery metadata, SQLite event persistence, CAS artifact storage and incremental Writeup generation.
+
+**P0 does not prove** a real ACP process, live Harness Worker, live model provider, real binary execution, target connectivity, Docker isolation or competition-platform Flag verification.
+
+## 2. Target product topology
+
+Selected target: Scheme A — Skill as the brain, MCP as the hand, Cordis as the thin skeleton.
+
+```text
+Harness GUI / Manager Session
+  -> Manager Core / TaskManager (only task and queue authority)
+      -> Runner / ACP adapter
+          -> independent ACP Worker Session per task
+             workspace root = tasks/<task_id>/work
+      -> human approval relay
+      -> progress and outcome reporting
+
+Worker bootstrap
+  -> ctf-core + one category Skill
+  -> native CLI/headless tools for ordinary work
+  -> one CTF Tools MCP for justified heavy tools
+
+Thin Cordis / Host bridge
+  -> lifecycle and permission-request hooks
+  -> evidence tap / screenshot metadata
+  -> no queue, task DB or second Agent loop
+
+Evidence backend
+  -> SQLite: append-only events, task/worker links, state
+  -> CAS: immutable bytes and sensitive payload objects
+  -> evidence-derived Writeup / ZIP export
+
+Product P2 execution boundary
+  -> WSL2 / Docker with per-task filesystem/process/network/resource controls
+```
+
+Harness GUI remains the single user-facing entry point. Do not create a parallel full-stack UI.
+
+## 3. Worker host and workspace boundary
+
+The accepted Worker carrier is **one independent ACP session per task**, created with that task's `work/` directory as the session workspace root. The session workspace is established at creation. A child Agent's `cwd` does not change the parent session writable root and is not an acceptable substitute.
+
+Workspace layout:
+- `input/`: immutable original attachments / verified read-only copies;
+- `work/`: Worker writable root;
+- `output/`: Manager-collected outputs;
+- `scripts/`: controlled task scripts where the Manager contract permits;
+- `writeup/`: derived report material, not a Worker-controlled evidence authority.
+
+Worker path resolution must not expose input/output/writeup as writable destinations. `collect_output` accepts only paths under task work/, then copies bytes into CAS/output with Worker attribution. Re-hash immutable inputs before/after use.
+
+ACP v1 methods modeled by the contract:
+- `session/new`, `session/list`, `session/resume`, `session/prompt`,
+- `session/cancel`, `session/close`, `session/request_permission`.
+
+Do not claim support for terminal APIs, plans, commands, elicitation, arbitrary extra writable directories, per-session presets, process suspend/resume or OS process kill. Missing interaction features belong in Manager/Runner/wrapper only after verified implementation. Session resume is not proof that a dead OS process was restored.
+
+## 4. Component ownership
 
 | Concern | Owner | Must not be duplicated in |
 |---|---|---|
 | Task lifecycle/orchestration | TaskManager | UI, Worker prompt, ad-hoc SQL |
-| Admission and FIFO | scheduler.py + Manager | independent queue JSON, frontend |
-| Persistence/state transitions | SolverStore / existing SQLite event store | second JSONL or parallel DB writer |
-| Worker lifecycle abstraction | Runner protocol | Manager-specific ACP calls |
+| Admission and FIFO | scheduler.py + Manager | queue JSON, Cordis scheduler, frontend |
+| Persistence/state transitions | SolverStore / SQLite | second JSONL or parallel DB writer |
+| Worker lifecycle abstraction | Runner protocol | Manager-specific runtime calls |
 | ACP wire surface | ACPClient adapter | category Skills |
 | Per-task workspace | workspace.py | arbitrary Worker path construction |
-| Attachment intake/integrity | intake.py + ArtifactStore | mutable copies of originals |
-| Evidence bytes | content-addressed ArtifactStore | duplicate blob stores |
-| Writeup rendering | writeup.py from persisted facts | free-form model reconstruction |
-| Category knowledge | Core + category Skills (planned) | MCP server / persistence layer |
-| Heavy fixed-version tools | dedicated tool adapter/MCP server (planned where justified) | prompt text or duplicate wrappers |
-| Policy and OS isolation | execution boundary (planned gates) | Skill instructions alone |
+| Attachment intake/integrity | intake.py + ArtifactStore | mutable original copies |
+| Evidence bytes | CAS | duplicate blob stores |
+| Writeup rendering | WriteupService from persisted facts | free-form model reconstruction |
+| Category knowledge | Core + five category Skills | MCP server / persistence |
+| Heavy fixed-version tools | one CTF Tools MCP server | prompt text or duplicate wrappers |
+| Host hooks and evidence tap | thin Cordis/Host bridge | second queue or event database |
+| Hard execution isolation | WSL2/Docker executor | Skill text, cwd or ACP session alone |
 
-## 3. Task and Worker model
+## 5. Manager, queue and lifecycle invariants
 
-- One task corresponds to one challenge and one Worker session at a time.
-- Each task owns input/, work/, output/, scripts/ and writeup/ directories.
-- Original attachments are immutable CAS objects; workspace copies are read-only and re-hashed.
-- Manager persists task state, Worker identity/session references, event links and step metadata.
-- Scheduler admits at most two active tasks. Queue order is persisted and FIFO.
-- Paused is non-terminal and retains its slot in the current contract. Cancel is terminal and releases the slot only after confirmed shutdown.
-- Manager restart turns live work into an explicit interrupted/recovery state; it must not pretend an in-memory Worker is alive.
+- One task maps to one challenge and at most one active Worker generation.
+- Default concurrency is two; hard maximum is two; further tasks queue FIFO.
+- Manager is the sole task/queue/state authority. Cordis bridges host events/permissions but does not own a second scheduler.
+- Manager handles intake, status, progress, approval relay, recovery and reporting. Worker performs heavy challenge analysis.
+- Paused is non-terminal and retains its slot.
+- Cancel is terminal. Queued cancellation creates no Worker session.
+- Worker stop must be confirmed before close, terminal state persistence and slot release.
+- If stop is unconfirmed, preserve Worker mapping and slot. If close fails, mark cleanup pending, preserve slot and allow explicit cleanup retry.
+- On restart, reconstruct task/evidence state. Do not claim Agent process restoration. Resume only if ACP confirms the session is resumable; otherwise create a new Worker generation and preserve prior evidence.
 
-## 4. Lifecycle and ACP
+## 6. Evidence and Flag integrity
 
-Persisted task states include queued, preparing, running, waiting_approval, paused, interrupted, solved, unsolved, failed and cancelled. Legal transitions live in backend/app/solver/models.py; do not bypass them with direct status mutation.
+- SQLite is the only authoritative task/event/state store.
+- CAS is the authoritative byte store; JSONL/Markdown/ZIP are derived exports only.
+- Every event uses authoritative task/worker IDs and participates in the integrity chain.
+- Agent event payload bytes are stored in CAS; SQLite contains only digest/size/reference metadata.
+- Worker event whitelist excludes system-owned approval, task-state, worker-close and verified-Flag transitions.
+- Candidate Flag values travel through the structured Manager API, not arbitrary Agent event payloads. Plaintext is a protected CAS artifact; SQLite stores only digest, length and reference.
+- Flag states are candidate → user-confirmed → externally verified. User confirmation is not platform verification; only a real FlagVerifier may produce verified state.
+- Writeup facts cite event/artifact IDs. Missing evidence is a visible gap. Export excludes/redacts sensitive Flag and Agent payload artifacts by default.
 
-Worker shutdown is safety-critical: request stop/cancel, query and confirm execution is quiescent, then close the session, persist terminal state and release the slot. If stop is not confirmed, do not close as if successful or free the slot.
+## 7. Execution and tool boundaries
 
-ACP v1 support is deliberately narrow. Unsupported ACP surfaces must raise an explicit unsupported error. Do not invent support for process kill, suspend/resume, terminal APIs or per-session preset controls.
+### 7.1 CLI/headless first
+Workers use CLI/headless tools by default. GUI applications may be launched for analysis and screenshot evidence; autonomous mouse/keyboard operation is not required for the first release.
 
-## 5. Data and evidence flow
+### 7.2 Skills / native tools / MCP / Cordis
+- Core Skill: common workflow, evidence, authorization request and escalation rules.
+- Five category Skills: specialist knowledge only.
+- Native Harness tools: ordinary file/text/CLI/headless operations and auxiliary research.
+- One CTF Tools MCP: structured heavy-tool operations (Ghidra Headless, GDB, pwntools, SageMath, controlled container execution and screenshot capture where justified).
+- Thin Cordis/Host bridge: lifecycle, permission relay, evidence hooks and screenshot metadata. No duplicate Agent loop, scheduler or evidence store.
 
-    Original ZIP / screenshot
-      -> validate + hash
-      -> immutable CAS
-      -> read-only task input copy + manifest
-      -> task events / Worker updates
-      -> event references + CAS artifacts
-      -> Writeup draft with evidence references and explicit gaps
-      -> human review/edit/version
-      -> final ZIP + manifest + SHA256SUMS
+MCP runs outside the Harness shell sandbox/approval boundary. Every MCP operation independently validates task ID, Worker ID, authorization, network scope, schema, timeout, output size and isolation. No arbitrary shell endpoint.
 
-SQLite is the single authoritative metadata/event store. CAS is the authoritative byte store. Do not create a second authoritative JSONL event log. JSON/Markdown/ZIP are derived outputs, not alternate sources of truth.
+### 7.3 Separate network channels
+- Auxiliary research: ordinary web tools for documentation/public research; challenge targets are blocked.
+- Challenge range: structured `ctf-range-*` APIs with per-call task/target/port/protocol/action/window checks.
+- Never route target traffic through generic web tools or unscoped shell.
 
-Agent event payloads and candidate Flag plaintext must not be stored directly in SQLite. Store sensitive payload bytes in CAS and persist only required digest/reference and non-sensitive metadata. Export must disclose incomplete/missing evidence, tool/Worker state and Flag verification state.
+## 8. G0 environment readiness
 
-## 6. Target product architecture — Scheme A
+Before formal solving, run the first-start environment doctor, verify the required toolchain for all five categories, install missing tools only through the approved environment workflow, run self-tests and freeze versions in `toolchain.lock`. Missing tools during a solve trigger installed-alternative checks and an environment blocker report—not ad-hoc host installation by a Worker.
 
-The authoritative target is **Skill as the brain, MCP as the hand, Cordis as the thin skeleton**, as captured in PRODUCT_BLUEPRINT.md and the 2026-11-10 feasibility audit.
+Warm-up challenges may add tools to the inventory. Additions require review, installation through the environment workflow and a new doctor/lock record.
 
-- Harness Web GUI remains the one user-facing entry point. Manager Session asks for missing information, relays approvals, summarizes progress and presents results.
-- Manager Core is the deterministic task/queue/state authority.
-- Harness native subagents are the target Worker host under a dedicated ctf profile (after explicit user approval). One task gets one Worker session and one task-specific cwd.
-- ctf-core plus one of five category Skills (Web/Misc/Crypto/Reverse/Pwn) supplies process and specialist knowledge.
-- Harness native tools handle ordinary filesystem/shell/web operations. One custom CTF Tools MCP server handles justified heavy/fixed-version tools.
-- Cordis is a thin host adapter: lifecycle bridge, permission relay, evidence tap and optional screenshot action. It does not run a second Agent loop or own a competing queue/database.
-- The existing Workbench evidence backend remains authoritative for SQLite event/hash-chain records, CAS bytes, safe import, Writeup and export.
-- WSL2/Docker is the later OS execution boundary for untrusted binaries and constrained network activity.
+## 9. Isolation warning
 
-The feasibility audit considered four options. Scheme A is selected. Cordis platformization (B) is too expensive and host-version-sensitive for the first release; the Harness+Agoni dual-agent system (C) duplicates loops/context/evidence; MCP-max (D) cannot automatically observe every Harness tool event and would over-rely on Worker self-report.
+A task workspace, separate ACP session, Skill policy or MCP schema is **not by itself an OS sandbox**. Real untrusted binary/exploit execution requires the Product P2 WSL2/Docker boundary: non-root execution, task-specific mounts, read-only originals, minimal capabilities, no host Docker socket mount, default-deny egress, resource/output/time limits, process-tree shutdown and verified cleanup.
 
-### 6.1 How the P0 Manager Core fits
-
-The accepted P0-REVIEW-FIX-02 code is an **engineering foundation**, not the whole product and not a replacement for the target topology.
-
-P0 provides TaskManager, two-slot FIFO Scheduler, per-task workspace, intake, Runner/ACP contracts, deterministic Mock Runner, SQLite event persistence, CAS evidence and incremental Writeup. It deliberately does not provide a real ACP process, live Harness Worker, ctf profile, five category Skills, real binary execution, target access, Docker isolation or a separate product UI.
-
-Integration guardrails:
-- Manager Core remains the authoritative task/queue/state owner. Cordis bridges Host Worker lifecycle/events into it; Cordis must not maintain a second queue or state database.
-- Runner remains the runtime seam. The real Host Worker adapter is an open A2 integration decision: compare the audited native subagent-control route with the P0 ACP adapter contract in an isolated smoke test. Do not claim either is connected until create/update/permission/stop/close/recovery are proven.
-- ACP v1 support is deliberately narrow. Unsupported calls stay explicit failures; ACP cancellation is not an OS process kill.
-- Reuse the existing SQLite/CAS backend. No parallel evidence store or JSONL authority.
-- Keep Harness GUI as the product entry point. Do not expand the existing frontend into a second full-stack application.
-- Passing Manager Core tests does not complete product P0; product P0 also requires the profile, initial Skills, evidence tap, real screenshot and end-to-end acceptance described in PRODUCT_BLUEPRINT.md.
-
-## 7. Security boundary
-
-A task-specific cwd is organizational isolation, not OS security isolation. A Runner/ACP adapter is a lifecycle abstraction, not a sandbox. Pwn/Reverse samples and untrusted binaries require a separate execution environment with filesystem, process, network and resource controls before real execution is enabled. See SECURITY.md.
+Until those gates pass, only explicitly approved safe analysis modes are enabled. See SECURITY.md.

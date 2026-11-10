@@ -1,49 +1,52 @@
 # CTFworker — Local-first CTF Solver
 
-CTFworker is the engineering home for a local-first, evidence-first CTF solving workbench. It coordinates challenge intake, per-challenge workspaces, bounded Worker execution, human authorization, immutable evidence, and Writeup/export.
+CTFworker is the engineering home for a local-first, evidence-first CTF solving workbench.
 
-> **Core product promise:** a Writeup is a traceable rendering of recorded actions and evidence—not a story reconstructed from a final Flag or an agent's recollection.
+> **Product promise:** one Manager coordinates one independent Worker per challenge; every factual Writeup claim traces back to recorded actions and evidence.
 
-## Start here (mandatory reading order)
+## Read this first
 
-1. [Product blueprint](docs/PRODUCT_BLUEPRINT.md) — the agreed target architecture, end-to-end workflow and product P0–P3 gates. This is the anti-drift north star.
-2. [Product charter](docs/PRODUCT_CHARTER.md) — product goal, users, scope and non-negotiable rules.
-3. [Architecture](docs/ARCHITECTURE.md) — current P0 code, target Harness integration and component ownership.
-4. [Roadmap](docs/ROADMAP.md) — product phases, engineering milestones and environment dependencies.
-5. [Current status](docs/STATUS.md) — what is done, blocked, and the one next task.
-6. [Agent workflow](docs/AGENT_WORKFLOW.md) — required instructions for DeepSeek, Codex and reviewers.
-7. [Decision log](docs/DECISIONS.md) — durable decisions; do not silently reverse them.
-8. [Security and data policy](docs/SECURITY.md) — authorized scope, isolation, secrets and evidence rules.
+1. [Product blueprint](docs/PRODUCT_BLUEPRINT.md) — authoritative product framework, settled behavior and Product P0–P3 gates.
+2. [Product charter](docs/PRODUCT_CHARTER.md) — users, workflow and non-negotiable principles.
+3. [Architecture](docs/ARCHITECTURE.md) — current P0 code and target ACP/Host architecture.
+4. [Roadmap](docs/ROADMAP.md) — Product, Engineering and Environment tracks.
+5. [Current status](docs/STATUS.md) — current state and one next task.
+6. [Agent workflow](docs/AGENT_WORKFLOW.md) — mandatory instructions for DeepSeek, Codex and reviewers.
+7. [Decision log](docs/DECISIONS.md) — durable decisions and supersessions.
+8. [Security policy](docs/SECURITY.md) — authorization, isolation, evidence and data handling.
 
-## Current implementation baseline
+## Product invariants
 
-- **P0 Manager Core baseline:** source snapshot a4d0762e1b5b7673a09ab5a2ac99656bc743925d (P0-REVIEW-FIX-02).
-- P0 provides challenge intake, per-task workspace, a two-slot FIFO scheduler, persisted task/Worker state, ACP v1 adapter contracts with a deterministic Mock Runner, SQLite event persistence, CAS artifact storage, and incremental Writeup generation.
-- P0 does **not** prove a real ACP process, live model provider, real challenge execution, target connectivity, or competition-platform Flag verification.
-- P0 was accepted with follow-up notes. See [status](docs/STATUS.md).
+- One task = one independent ACP Worker Session = one task workspace.
+- At most two active tasks; further tasks queue FIFO.
+- CLI/headless first; GUI screenshots supported, autonomous clicking not required.
+- G0 environment doctor and version-pinned `toolchain.lock` before formal solving.
+- Manager coordinates; Worker solves; Worker explores before escalating.
+- Five categories: Web, Misc, Crypto, Reverse and Pwn.
+- SQLite + CAS are the sole evidence authority; Writeups derive from recorded evidence.
+- Human approval for sensitive actions; no arbitrary targets or Flag-submission brute force.
 
-## Repository layout
+## Current engineering baseline
 
-- backend/app/solver/: Manager, scheduler, Runner/ACP contracts, intake, workspace, store and Writeup.
-- backend/app/: existing Workbench integration and persistence primitives.
-- frontend/: existing Workbench UI; no separate full-stack product is planned.
-- docs/: product, architecture, roadmap, status, decisions, security and acceptance records.
-- scripts/, tests/: reproducible checks and synthetic fixtures.
+P0-REVIEW-FIX-02 is the accepted Manager Core source candidate, labelled `a4d0762e1b5b7673a09ab5a2ac99656bc743925d`. Its original 110-file source archive is being migrated into this repository on the draft baseline PR. The import is not accepted until target-repository validation and independent review complete.
+
+P0 Manager Core uses a deterministic Mock Runner for its current acceptance surface. It does not prove a real ACP process, live model provider, real binary execution, target connectivity, Docker isolation or platform Flag verification.
 
 ## Development rules
 
 - Read the eight documents above before planning or editing code.
-- Work on one numbered task at a time; do not expand scope without approval.
-- Default concurrency is **two active challenge Workers**; excess tasks wait FIFO.
-- Never execute an untrusted attachment or contact a target during mock-only acceptance.
+- Work on one numbered task at a time.
+- Do not increase the two-task hard limit or replace the selected ACP Worker model without a new approved decision.
+- Do not let Workers install software or modify the host during a solve.
 - Keep real challenge data, Flags, tokens, raw logs, target URLs/IPs and generated Writeups out of this public repository.
-- No push, PR merge, release, environment mutation or live-model run without explicit authorization.
-- A green test suite is evidence for the tested scope only; it is not proof of production readiness.
+- No merge, release, environment mutation or live-target run without explicit authorization.
 
-## Offline demo
+## Offline synthetic demo
+
+After the P0 source import:
 
 ```powershell
 python scripts/solver_demo.py
 ```
 
-This demo is synthetic and uses the Mock Runner. It does not launch a real agent, execute challenge binaries, or access a target.
+The demo is synthetic and uses the Mock Runner. It does not launch a real Agent, execute challenge binaries or access a target.
