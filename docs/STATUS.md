@@ -63,7 +63,7 @@ These are historical/local audit results, not target-repository acceptance. Full
 
 ## Environment workstream — latest handoff
 
-- Phase 0/1: reported complete. Ubuntu 24.04.5 WSL2 is installed at `D:\\WSL\\Ubuntu-24.04`; Linux user `ctfuser`.
+- Phase 0/1: reported complete. Ubuntu 24.04.5 WSL2 is installed at `D:\WSL\Ubuntu-24.04`; Linux user `ctfuser`.
 - Phase 2A and Phase 2B-1A: reported complete.
 - Docker Engine: `29.9.3`, installed and running inside WSL2.
 - **Phase 2B-1G: PASS.** Docker systemd proxy drop-in points to the reachable WSL-side proxy `127.0.0.1:7890`; `hello-world` completed its first pull/run successfully. Docker socket is `root:docker` mode `0660`; `ctfuser` is not in the `docker` group; no TCP listeners on `2375/2376`; `.wslconfig` mirrored networking and `autoProxy` are effective.
