@@ -40,3 +40,15 @@ Baseline source commit: a4d0762e1b5b7673a09ab5a2ac99656bc743925d. Preserve its b
 
 ## D-013 — Environment setup is a separate workstream (2026-11-10)
 WSL2/Docker/proxy setup does not change the Manager Core contract. Host setup and application development have separate tasks, reports and approvals. Latest known environment blocker: dockerd proxy inheritance after Phase 2B-1F; verify current state before resuming.
+
+## D-014 — Scheme A is the target product architecture (2026-11-10)
+The target product remains Harness-native single-window Manager + native per-task subagents under a dedicated ctf profile + Core/five category Skills + one heavy-tool CTF MCP + thin Cordis host hooks + reused Workbench evidence backend. Cordis is not a second Agent platform. The detailed responsibilities and product acceptance gates are in PRODUCT_BLUEPRINT.md.
+
+## D-015 — Manager Core is the single task/queue authority (2026-11-10)
+The later P0 Manager Core implementation owns persisted task state, two-slot FIFO admission, lifecycle and task-to-evidence links. The initial feasibility audit assigned a thin scheduler role to Cordis; after Manager Core was implemented, that responsibility is centralized in Manager Core to avoid two queues or competing stores. Cordis only bridges Host events/lifecycle/permissions and evidence hooks.
+
+## D-016 — Real Worker host binding remains an explicit A2 spike (2026-11-10)
+The feasibility audit recommended native Harness subagent-control under the dedicated ctf profile. P0 separately defines a Runner/ACP adapter contract and a Mock Runner. These are not assumed equivalent. A2 must compare the native subagent route and ACP adapter against required create/update/permission/stop/close/recovery semantics and record a decision before implementation. Until then, no real Worker integration is claimed.
+
+## D-017 — Product P0–P3 and engineering P0 Manager Core are different tracks (2026-11-10)
+Product P0 means profile + initial Skills + evidence service/tap + real screenshot + doctor + end-to-end acceptance. P0-REVIEW-FIX-02 is an engineering code milestone. Passing the latter does not mark the former complete.
