@@ -68,13 +68,34 @@ SQLite is the single authoritative metadata/event store. CAS is the authoritativ
 
 Agent event payloads and candidate Flag plaintext must not be stored directly in SQLite. Store sensitive payload bytes in CAS and persist only required digest/reference and non-sensitive metadata. Export must disclose incomplete/missing evidence, tool/Worker state and Flag verification state.
 
-## 6. Historical integration proposal (not current implementation)
+## 6. Target product architecture — Scheme A
 
-The earlier feasibility study proposed **Skill as solving playbook, MCP as heavy-tool interface, Cordis as thin scheduling/authorization/evidence-hook layer, and Harness-native tools for ordinary file and shell work**. It also recommended a dedicated CTF profile, category-specific Worker presets, and event-tap evidence capture.
+The authoritative target is **Skill as the brain, MCP as the hand, Cordis as the thin skeleton**, as captured in PRODUCT_BLUEPRINT.md and the 2026-11-10 feasibility audit.
 
-This remains an integration direction, not a claim those Harness/Cordis pieces are implemented in this repository. The later P0 implementation deliberately established a portable Manager/Runner/ACP contract first.
+- Harness Web GUI remains the one user-facing entry point. Manager Session asks for missing information, relays approvals, summarizes progress and presents results.
+- Manager Core is the deterministic task/queue/state authority.
+- Harness native subagents are the target Worker host under a dedicated ctf profile (after explicit user approval). One task gets one Worker session and one task-specific cwd.
+- ctf-core plus one of five category Skills (Web/Misc/Crypto/Reverse/Pwn) supplies process and specialist knowledge.
+- Harness native tools handle ordinary filesystem/shell/web operations. One custom CTF Tools MCP server handles justified heavy/fixed-version tools.
+- Cordis is a thin host adapter: lifecycle bridge, permission relay, evidence tap and optional screenshot action. It does not run a second Agent loop or own a competing queue/database.
+- The existing Workbench evidence backend remains authoritative for SQLite event/hash-chain records, CAS bytes, safe import, Writeup and export.
+- WSL2/Docker is the later OS execution boundary for untrusted binaries and constrained network activity.
 
-Retained principles: use native tools for ordinary operations where appropriate; use MCP only for fixed-version/heavy structured tools; never let MCP bypass authorization and isolation. Skills provide instructions and domain knowledge, not security enforcement.
+The feasibility audit considered four options. Scheme A is selected. Cordis platformization (B) is too expensive and host-version-sensitive for the first release; the Harness+Agoni dual-agent system (C) duplicates loops/context/evidence; MCP-max (D) cannot automatically observe every Harness tool event and would over-rely on Worker self-report.
+
+### 6.1 How the P0 Manager Core fits
+
+The accepted P0-REVIEW-FIX-02 code is an **engineering foundation**, not the whole product and not a replacement for the target topology.
+
+P0 provides TaskManager, two-slot FIFO Scheduler, per-task workspace, intake, Runner/ACP contracts, deterministic Mock Runner, SQLite event persistence, CAS evidence and incremental Writeup. It deliberately does not provide a real ACP process, live Harness Worker, ctf profile, five category Skills, real binary execution, target access, Docker isolation or a separate product UI.
+
+Integration guardrails:
+- Manager Core remains the authoritative task/queue/state owner. Cordis bridges Host Worker lifecycle/events into it; Cordis must not maintain a second queue or state database.
+- Runner remains the runtime seam. The real Host Worker adapter is an open A2 integration decision: compare the audited native subagent-control route with the P0 ACP adapter contract in an isolated smoke test. Do not claim either is connected until create/update/permission/stop/close/recovery are proven.
+- ACP v1 support is deliberately narrow. Unsupported calls stay explicit failures; ACP cancellation is not an OS process kill.
+- Reuse the existing SQLite/CAS backend. No parallel evidence store or JSONL authority.
+- Keep Harness GUI as the product entry point. Do not expand the existing frontend into a second full-stack application.
+- Passing Manager Core tests does not complete product P0; product P0 also requires the profile, initial Skills, evidence tap, real screenshot and end-to-end acceptance described in PRODUCT_BLUEPRINT.md.
 
 ## 7. Security boundary
 
