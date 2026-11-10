@@ -75,7 +75,7 @@ Consequences:
 - Manager creates/tracks one ACP Worker session/generation per task through Runner.
 - Worker workspace is exactly `tasks/<task_id>/work`; input originals, output collection and Writeup paths are not Worker write targets.
 - ACP v1 is limited to verified methods: `session/new`, `session/list`, `session/resume`, `session/prompt`, `session/cancel`, `session/close`, `session/request_permission`.
-- Do not invent ACP support for terminal APIs, plans, commands, elicitation, arbitrary extra writable directories, per-session presets, process suspend/resume or OS process kill. Manager/Runner/wrapper provides required orchestration outside ACP.
+- The ACP Worker Session does not expose terminal, ask_user, todo/plans, command APIs, elicitation, arbitrary extra writable directories or per-session presets; it also does not provide process suspend/resume or OS process kill. Manager owns user interaction and task tracking; the Runner/approved tool wrapper provides execution surfaces; Worker bootstrap must supply ctf-core plus exactly one category Skill through a verified session-bootstrap mechanism. Never assume a per-session preset filter exists.
 - ACP session recovery is not the same as restoring a dead Agent process. After restart, Manager reconstructs task state/evidence; resume only if ACP confirms the session is resumable, otherwise create a new Worker generation. Never claim a process was restored if it was not.
 - A session workspace is not a kernel-enforced sandbox. Untrusted binaries/exploit code still require Product P2 isolation.
 
