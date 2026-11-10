@@ -7,16 +7,17 @@ This is the anti-drift contract for every new ChatGPT conversation, DeepSeek ses
 Before proposing or editing code:
 
 1. Read README.md.
-2. Read docs/PRODUCT_CHARTER.md.
-3. Read docs/ARCHITECTURE.md.
-4. Read docs/ROADMAP.md.
-5. Read docs/STATUS.md.
-6. Read docs/DECISIONS.md.
-7. Read docs/SECURITY.md.
-8. Read the current phase specification and relevant interface docs.
-9. Inspect the actual GitHub default branch, open PRs, working tree and latest commit. Never trust a handoff SHA without rechecking it.
+2. Read docs/PRODUCT_BLUEPRINT.md first. It is the product north star and the source for target architecture and product P0–P3 acceptance.
+3. Read docs/PRODUCT_CHARTER.md.
+4. Read docs/ARCHITECTURE.md, including the distinction between target Harness architecture and the P0 Manager Core implementation.
+5. Read docs/ROADMAP.md; distinguish product P0–P3 from engineering milestones.
+6. Read docs/STATUS.md.
+7. Read docs/DECISIONS.md.
+8. Read docs/SECURITY.md.
+9. Read the current phase specification and relevant interface docs.
+10. Inspect the actual GitHub default branch, open PRs, working tree and latest commit. Never trust a handoff SHA without rechecking it.
 
-If documents conflict, stop and report the conflict. Do not choose the easiest interpretation.
+If documents conflict, stop and report the conflict. Do not choose the easiest interpretation. Never replace the selected Scheme A target with a generic chat wrapper, a second full-stack UI, a second Agent loop, a duplicate queue/database or MCP-max architecture without an explicit user-approved ADR.
 
 ## 2. Single-task discipline
 
@@ -24,6 +25,9 @@ If documents conflict, stop and report the conflict. Do not choose the easiest i
 - One task, one branch, one reviewable change. No opportunistic refactors.
 - Do not skip dependencies, acceptance gates or failed tests.
 - Do not implement later-phase features as "small improvements".
+- Preserve one task/one Worker/one workspace, two active Workers + FIFO, a single SQLite/CAS evidence authority, human approval, and evidence-derived Writeups.
+- Treat Skills as knowledge/instructions, MCP as structured heavy-tool execution, Cordis as thin host hooks, Manager Core as task/queue authority, and OS/container controls as the actual isolation boundary.
+- Do not claim product P0 complete merely because engineering P0 Manager Core tests pass.
 - If new scope is discovered, record it as follow-up and ask before expanding.
 
 ## 3. Required task brief
